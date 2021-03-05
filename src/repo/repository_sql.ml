@@ -1,23 +1,203 @@
 open Lwt.Syntax
+module Utils = Repository_utils
 
 module MakeMariaDb (MigrationService : Sihl.Contract.Migration.Sig) : Repository.Sig =
 struct
   let lifecycles = [ Sihl.Service.Database.lifecycle; MigrationService.lifecycle ]
 
-  let raise_caqti_error err =
-    match err with
-    | Error err -> failwith (Caqti_error.show err)
-    | Ok result -> result
-  ;;
-
   module Migration = Repository_migration
 
   let register_migration () = MigrationService.register_migration (Migration.migration ())
 
+  let is_unique_request table_name sql_filter request_types sql_joins =
+    let sql_request =
+      Caml.Format.asprintf
+        {sql|
+            SELECT NOT EXISTS (
+              SELECT 1
+              FROM %s
+                %s
+              WHERE %s
+            )
+          |sql}
+        table_name
+        sql_joins
+        sql_filter
+    in
+    Caqti_request.find request_types Caqti_type.bool sql_request
+  ;;
+
+  let is_unique_with_uuid_request table_name sql_filter request_types sql_joins =
+    let sql_request =
+      Caml.Format.asprintf
+        {sql|
+          SELECT NOT EXISTS (
+            SELECT 1
+            FROM %s
+              %s
+            WHERE
+              %s
+              AND %s.uuid != UNHEX(REPLACE(?, '-', ''))
+            LIMIT 1
+          )
+          |sql}
+        table_name
+        sql_joins
+        sql_filter
+        table_name
+    in
+    Caqti_request.find ~oneshot:true request_types Caqti_type.bool sql_request
+  ;;
+
+  let is_unique connection table_name ~sql_filter ~values ?sql_joins ?uuid () =
+    let sql_joins = sql_joins |> Option.value ~default:"" in
+    let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+    match uuid with
+    | None ->
+      let (Utils.Dynparam.Pack (pt, pv)) = values in
+      Connection.find (is_unique_request table_name sql_filter pt sql_joins) pv
+      |> Lwt.map Utils.raise_caqti_error
+    | Some uuid ->
+      let values = Utils.Dynparam.add Caqti_type.string uuid values in
+      let (Utils.Dynparam.Pack (pt, pv)) = values in
+      Connection.find (is_unique_with_uuid_request table_name sql_filter pt sql_joins) pv
+      |> Lwt.map Utils.raise_caqti_error
+  ;;
+
   module Sql = struct
     module Model = Repository_model
 
-    module Questionnaire = struct
+    module QuestionRow = struct
+      let insert_question_request =
+        Caqti_request.exec
+          Model.QuestionRow.t
+          {sql|
+            INSERT INTO quest_questions (
+              uuid,
+              label,
+              help_text,
+              text,
+              default_value,
+              validation_regex,
+              question_type,
+              max_file_size_mb,
+              mime_types,
+              possible_options
+            ) VALUES (
+              UNHEX(REPLACE(?, '-', '')),
+              ?,
+              ?,
+              ?,
+              ?,
+              ?,
+              ?,
+              ?,
+              ?,
+              ?
+            );
+          |sql}
+      ;;
+
+      let insert connection question =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec insert_question_request question
+        |> Lwt.map Utils.raise_caqti_error
+      ;;
+
+      let clean_request =
+        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_questions;"
+      ;;
+
+      let clean connection =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec clean_request () |> Lwt.map Utils.raise_caqti_error
+      ;;
+    end
+
+    module AnswerRow = struct
+      let update_answer_request =
+        Caqti_request.exec
+          (let open Caqti_type in
+          tup3 (option string) (option string) string)
+          {sql|
+          UPDATE quest_answers
+          SET
+            text = ?,
+            storage_handle = UNHEX(REPLACE(?, '-', ''))
+          WHERE
+          quest_answers.uuid = UNHEX(REPLACE(?, '-', ''));
+        |sql}
+      ;;
+
+      let update_answer connection answer =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec update_answer_request answer |> Lwt.map Utils.raise_caqti_error
+      ;;
+
+      let delete_answer_request =
+        Caqti_request.exec
+          Caqti_type.string
+          {sql|
+          DELETE FROM quest_answers WHERE
+          quest_answers.uuid = UNHEX(REPLACE(?, '-', ''));
+        |sql}
+      ;;
+
+      let delete_answer connection answer =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec delete_answer_request answer |> Lwt.map Utils.raise_caqti_error
+      ;;
+
+      let insert_answer_input_type =
+        let open Caqti_type in
+        tup2
+          string
+          (tup2 string (tup2 string (tup2 string (tup2 (option string) (option string)))))
+      ;;
+
+      let insert_answer_request =
+        Caqti_request.exec
+          insert_answer_input_type
+          {sql|
+          INSERT INTO quest_answers (
+            uuid,
+            quest_questionnaire,
+            quest_template_question_mapping,
+            text,
+            storage_handle
+          ) VALUES (
+            UNHEX(REPLACE(?, '-', '')),
+            (SELECT id FROM quest_questionnaires
+            WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))),
+            (SELECT id FROM quest_template_question_mappings
+            WHERE quest_template_question_mappings.quest_template =
+                (SELECT quest_template FROM quest_questionnaires
+                WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', '')))
+              AND quest_template_question_mappings.quest_question =
+                  (SELECT id FROM quest_questions
+                  WHERE quest_questions.uuid = UNHEX(REPLACE(?, '-', '')))),
+            ?,
+            UNHEX(REPLACE(?, '-', ''))
+          );
+        |sql}
+      ;;
+
+      let insert_answer connection answer =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec insert_answer_request answer |> Lwt.map Utils.raise_caqti_error
+      ;;
+
+      let clean_request =
+        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_answers;"
+      ;;
+
+      let clean connection =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec clean_request () |> Lwt.map Utils.raise_caqti_error
+      ;;
+    end
+
+    module QuestionnaireRow = struct
       let find_request =
         Caqti_request.find
           Caqti_type.string
@@ -48,12 +228,12 @@ struct
 
       let find connection id =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.find_opt find_request id |> Lwt.map raise_caqti_error
+        Connection.find_opt find_request id |> Lwt.map Utils.raise_caqti_error
       ;;
 
       let find_exn connection id =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.find find_request id |> Lwt.map raise_caqti_error
+        Connection.find find_request id |> Lwt.map Utils.raise_caqti_error
       ;;
 
       let get_questions_request =
@@ -112,7 +292,8 @@ struct
 
       let get_questions connection id =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.collect_list get_questions_request id |> Lwt.map raise_caqti_error
+        Connection.collect_list get_questions_request id
+        |> Lwt.map Utils.raise_caqti_error
       ;;
 
       let get_answer_request =
@@ -139,13 +320,13 @@ struct
             ))
           FROM quest_answers
             LEFT JOIN storage_handles
-            ON quest_answers.storage_handle = storage_handles.uuid
+              ON quest_answers.storage_handle = storage_handles.uuid
             LEFT JOIN quest_template_question_mappings
-            ON quest_answers.quest_template_question_mapping = quest_template_question_mappings.id
+              ON quest_answers.quest_template_question_mapping = quest_template_question_mappings.id
             LEFT JOIN quest_questions
-            ON quest_template_question_mappings.quest_question = quest_questions.id
+              ON quest_template_question_mappings.quest_question = quest_questions.id
             LEFT JOIN quest_questionnaires
-            ON quest_answers.quest_questionnaire = quest_questionnaires.id
+              ON quest_answers.quest_questionnaire = quest_questionnaires.id
           WHERE
           quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
             AND quest_questions.uuid = UNHEX(REPLACE(?, '-', ''))
@@ -154,11 +335,20 @@ struct
 
       let get_answer connection ids =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.find_opt get_answer_request ids |> Lwt.map raise_caqti_error
+        Connection.find_opt get_answer_request ids |> Lwt.map Utils.raise_caqti_error
+      ;;
+
+      let clean_request =
+        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_questionnaires;"
+      ;;
+
+      let clean connection =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec clean_request () |> Lwt.map Utils.raise_caqti_error
       ;;
     end
 
-    module Template = struct
+    module TemplateRow = struct
       let insert_template_request =
         Caqti_request.exec
           (let open Caqti_type in
@@ -178,7 +368,8 @@ struct
 
       let insert_template connection template =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec insert_template_request template |> Lwt.map raise_caqti_error
+        Connection.exec insert_template_request template
+        |> Lwt.map Utils.raise_caqti_error
       ;;
 
       let insert_questionnaire_request =
@@ -199,50 +390,25 @@ struct
       let insert_questionnaire connection questionnaire =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
         Connection.exec insert_questionnaire_request questionnaire
-        |> Lwt.map raise_caqti_error
+        |> Lwt.map Utils.raise_caqti_error
+      ;;
+
+      let clean_request =
+        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_templates;"
+      ;;
+
+      let clean connection =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec clean_request () |> Lwt.map Utils.raise_caqti_error
       ;;
     end
 
-    let insert_question_request =
-      Caqti_request.exec
-        Model.QuestionRow.t
-        {sql|
-          INSERT INTO quest_questions (
-            uuid,
-            label,
-            help_text,
-            text,
-            default_value,
-            validation_regex,
-            question_type,
-            max_file_size_mb,
-            mime_types,
-            possible_options
-          ) VALUES (
-            UNHEX(REPLACE(?, '-', '')),
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?
-          );
-        |sql}
-    ;;
-
-    let insert_question connection question =
-      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-      Connection.exec insert_question_request question |> Lwt.map raise_caqti_error
-    ;;
-
-    let insert_mapping_request =
-      Caqti_request.exec
-        (let open Caqti_type in
-        tup2 string (tup2 string (tup2 string (tup2 int bool))))
-        {sql|
+    module Mapping = struct
+      let insert_mapping_request =
+        Caqti_request.exec
+          (let open Caqti_type in
+          tup2 string (tup2 string (tup2 string (tup2 int bool))))
+          {sql|
           INSERT INTO quest_template_question_mappings (
             uuid,
             quest_template,
@@ -257,145 +423,34 @@ struct
             ?
           );
         |sql}
-    ;;
+      ;;
 
-    let insert_mapping connection mapping =
-      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-      Connection.exec insert_mapping_request mapping |> Lwt.map raise_caqti_error
-    ;;
+      let insert_mapping connection mapping =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec insert_mapping_request mapping |> Lwt.map Utils.raise_caqti_error
+      ;;
 
-    let update_answer_request =
-      Caqti_request.exec
-        (let open Caqti_type in
-        tup3 (option string) (option string) string)
-        {sql|
-          UPDATE quest_answers
-          SET
-            text = ?,
-            storage_handle = UNHEX(REPLACE(?, '-', ''))
-          WHERE
-          quest_answers.uuid = UNHEX(REPLACE(?, '-', ''));
-        |sql}
-    ;;
+      let clean_request =
+        Caqti_request.exec
+          Caqti_type.unit
+          "TRUNCATE TABLE quest_template_question_mappings;"
+      ;;
 
-    let update_answer connection answer =
-      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-      Connection.exec update_answer_request answer |> Lwt.map raise_caqti_error
-    ;;
-
-    let delete_answer_request =
-      Caqti_request.exec
-        Caqti_type.string
-        {sql|
-          DELETE FROM quest_answers WHERE
-          quest_answers.uuid = UNHEX(REPLACE(?, '-', ''));
-        |sql}
-    ;;
-
-    let delete_answer connection answer =
-      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-      Connection.exec delete_answer_request answer |> Lwt.map raise_caqti_error
-    ;;
-
-    let insert_answer_input_type =
-      let open Caqti_type in
-      tup2
-        string
-        (tup2 string (tup2 string (tup2 string (tup2 (option string) (option string)))))
-    ;;
-
-    let insert_answer_request =
-      Caqti_request.exec
-        insert_answer_input_type
-        {sql|
-          INSERT INTO quest_answers (
-            uuid,
-            quest_questionnaire,
-            quest_template_question_mapping,
-            text,
-            storage_handle
-          ) VALUES (
-            UNHEX(REPLACE(?, '-', '')),
-            (SELECT id FROM quest_questionnaires
-            WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))),
-            (SELECT id FROM quest_template_question_mappings
-            WHERE quest_template_question_mappings.quest_template =
-                (SELECT quest_template FROM quest_questionnaires
-                WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', '')))
-              AND quest_template_question_mappings.quest_question =
-                  (SELECT id FROM quest_questions
-                  WHERE quest_questions.uuid = UNHEX(REPLACE(?, '-', '')))),
-            ?,
-            UNHEX(REPLACE(?, '-', ''))
-          );
-        |sql}
-    ;;
-
-    let insert_answer connection answer =
-      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-      Connection.exec insert_answer_request answer |> Lwt.map raise_caqti_error
-    ;;
-
-    let clean_questions_request =
-      Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_questions;"
-    ;;
-
-    let clean_questions connection =
-      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-      Connection.exec clean_questions_request () |> Lwt.map raise_caqti_error
-    ;;
-
-    let clean_templates_request =
-      Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_templates;"
-    ;;
-
-    let clean_templates connection =
-      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-      Connection.exec clean_templates_request () |> Lwt.map raise_caqti_error
-    ;;
-
-    let clean_questionnaires_request =
-      Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_questionnaires;"
-    ;;
-
-    let clean_questionnaires connection =
-      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-      Connection.exec clean_questionnaires_request () |> Lwt.map raise_caqti_error
-    ;;
-
-    let clean_mappings_request =
-      Caqti_request.exec
-        Caqti_type.unit
-        "TRUNCATE TABLE quest_template_question_mappings;"
-    ;;
-
-    let clean_mappings connection =
-      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-      Connection.exec clean_mappings_request () |> Lwt.map raise_caqti_error
-    ;;
-
-    let clean_answers_request =
-      Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_answers;"
-    ;;
-
-    let clean_answers connection =
-      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-      Connection.exec clean_answers_request () |> Lwt.map raise_caqti_error
-    ;;
+      let clean connection =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec clean_request () |> Lwt.map Utils.raise_caqti_error
+      ;;
+    end
 
     let clean () =
       Sihl.Service.Database.query (fun connection ->
-          let* () = clean_questions connection in
-          let* () = clean_templates connection in
-          let* () = clean_questionnaires connection in
-          let* () = clean_mappings connection in
-          clean_answers connection)
+          let* () = QuestionRow.clean connection in
+          let* () = TemplateRow.clean connection in
+          let* () = QuestionnaireRow.clean connection in
+          let* () = Mapping.clean connection in
+          AnswerRow.clean connection)
     ;;
   end
 
   let register_cleaner () = Sihl.Service.Repository.register_cleaner Sql.clean
-  (* let get = Sql.get *)
-  (* let get_by_label = Sql.get_by_label *)
-  (* let insert = Sql.insert *)
-  (* let update = Sql.update *)
 end
