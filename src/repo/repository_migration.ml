@@ -5,9 +5,9 @@ let questions =
       CREATE TABLE IF NOT EXISTS `quest_questions` (
         `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         `uuid` binary(16) NOT NULL,
-        `text` varchar(512) COLLATE utf8mb4_unicode_ci NOT NULL,
         `label` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `help_text` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `text` varchar(512) COLLATE utf8mb4_unicode_ci NOT NULL,
         `default_value` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `validation_regex` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT '.+',
         `question_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'text',

@@ -9,10 +9,11 @@ struct
 
   let register_migration () = MigrationService.register_migration (Migration.migration ())
 
-  let is_unique_request table_name sql_filter request_types sql_joins =
-    let sql_request =
-      Caml.Format.asprintf
-        {sql|
+  module DbUtils = struct
+    let is_unique_request table_name sql_filter request_types sql_joins =
+      let sql_request =
+        Caml.Format.asprintf
+          {sql|
             SELECT NOT EXISTS (
               SELECT 1
               FROM %s
@@ -20,17 +21,17 @@ struct
               WHERE %s
             )
           |sql}
-        table_name
-        sql_joins
-        sql_filter
-    in
-    Caqti_request.find request_types Caqti_type.bool sql_request
-  ;;
+          table_name
+          sql_joins
+          sql_filter
+      in
+      Caqti_request.find request_types Caqti_type.bool sql_request
+    ;;
 
-  let is_unique_with_uuid_request table_name sql_filter request_types sql_joins =
-    let sql_request =
-      Caml.Format.asprintf
-        {sql|
+    let is_unique_with_uuid_request table_name sql_filter request_types sql_joins =
+      let sql_request =
+        Caml.Format.asprintf
+          {sql|
           SELECT NOT EXISTS (
             SELECT 1
             FROM %s
@@ -41,33 +42,73 @@ struct
             LIMIT 1
           )
           |sql}
-        table_name
-        sql_joins
-        sql_filter
-        table_name
-    in
-    Caqti_request.find ~oneshot:true request_types Caqti_type.bool sql_request
-  ;;
+          table_name
+          sql_joins
+          sql_filter
+          table_name
+      in
+      Caqti_request.find ~oneshot:true request_types Caqti_type.bool sql_request
+    ;;
 
-  let is_unique connection table_name ~sql_filter ~values ?sql_joins ?uuid () =
-    let sql_joins = sql_joins |> Option.value ~default:"" in
-    let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-    match uuid with
-    | None ->
-      let (Utils.Dynparam.Pack (pt, pv)) = values in
-      Connection.find (is_unique_request table_name sql_filter pt sql_joins) pv
-      |> Lwt.map Utils.raise_caqti_error
-    | Some uuid ->
-      let values = Utils.Dynparam.add Caqti_type.string uuid values in
-      let (Utils.Dynparam.Pack (pt, pv)) = values in
-      Connection.find (is_unique_with_uuid_request table_name sql_filter pt sql_joins) pv
-      |> Lwt.map Utils.raise_caqti_error
-  ;;
+    let is_unique connection table_name ~sql_filter ~values ?sql_joins ?uuid () =
+      let sql_joins = sql_joins |> Option.value ~default:"" in
+      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+      match uuid with
+      | None ->
+        let (Utils.Dynparam.Pack (pt, pv)) = values in
+        Connection.find (is_unique_request table_name sql_filter pt sql_joins) pv
+        |> Lwt.map Utils.raise_caqti_error
+      | Some uuid ->
+        let values = Utils.Dynparam.add Caqti_type.string uuid values in
+        let (Utils.Dynparam.Pack (pt, pv)) = values in
+        Connection.find
+          (is_unique_with_uuid_request table_name sql_filter pt sql_joins)
+          pv
+        |> Lwt.map Utils.raise_caqti_error
+    ;;
+  end
 
   module Sql = struct
     module Model = Repository_model
 
     module QuestionRow = struct
+      let find_request =
+        Caqti_request.find
+          Caqti_type.string
+          Model.QuestionRow.t
+          {sql|
+            SELECT
+              LOWER(CONCAT(
+                SUBSTR(HEX(uuid), 1, 8), '-',
+                SUBSTR(HEX(uuid), 9, 4), '-',
+                SUBSTR(HEX(uuid), 13, 4), '-',
+                SUBSTR(HEX(uuid), 17, 4), '-',
+                SUBSTR(HEX(uuid), 21)
+              )),
+              label,
+              help_text,
+              text,
+              default_value,
+              validation_regex,
+              question_type,
+              max_file_size_mb,
+              mime_types,
+              possible_options
+            FROM quest_questions
+            WHERE uuid = UNHEX(REPLACE(?, '-', ''))
+          |sql}
+      ;;
+
+      let find connection id =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.find_opt find_request id |> Lwt.map Utils.raise_caqti_error
+      ;;
+
+      let find_exn connection id =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.find find_request id |> Lwt.map Utils.raise_caqti_error
+      ;;
+
       let insert_question_request =
         Caqti_request.exec
           Model.QuestionRow.t
@@ -115,7 +156,74 @@ struct
     end
 
     module AnswerRow = struct
-      let update_answer_request =
+      let find_request =
+        Caqti_request.find
+          Caqti_type.string
+          Model.AnswerRow.t
+          {sql|
+            SELECT
+              LOWER(CONCAT(
+                SUBSTR(HEX(uuid), 1, 8), '-',
+                SUBSTR(HEX(uuid), 9, 4), '-',
+                SUBSTR(HEX(uuid), 13, 4), '-',
+                SUBSTR(HEX(uuid), 17, 4), '-',
+                SUBSTR(HEX(uuid), 21)
+              )),
+              text,
+              storage_handle
+            FROM quest_answers
+            WHERE uuid = UNHEX(REPLACE(?, '-', ''))
+          |sql}
+      ;;
+
+      let find connection id =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.find_opt find_request id |> Lwt.map Utils.raise_caqti_error
+      ;;
+
+      let find_exn connection id =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.find find_request id |> Lwt.map Utils.raise_caqti_error
+      ;;
+
+      let insert_type =
+        let open Caqti_type in
+        tup2
+          string
+          (tup2 string (tup2 string (tup2 string (tup2 (option string) (option string)))))
+      ;;
+
+      let insert_request =
+        Caqti_request.exec
+          insert_type
+          {sql|
+          INSERT INTO quest_answers (
+            uuid,
+            quest_questionnaire,
+            quest_template_question_mapping,
+            text,
+            storage_handle
+          ) VALUES (
+            UNHEX(REPLACE(?, '-', '')),
+            (SELECT id FROM quest_questionnaires WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))),
+            (SELECT id FROM quest_template_question_mappings
+              WHERE quest_template_question_mappings.quest_template =
+                (SELECT quest_template FROM quest_questionnaires
+                  WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', '')))
+              AND quest_template_question_mappings.quest_question =
+                (SELECT id FROM quest_questions WHERE quest_questions.uuid = UNHEX(REPLACE(?, '-', '')))),
+            ?,
+            UNHEX(REPLACE(?, '-', ''))
+          );
+        |sql}
+      ;;
+
+      let insert_answer connection answer =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec insert_request answer |> Lwt.map Utils.raise_caqti_error
+      ;;
+
+      let update_request =
         Caqti_request.exec
           (let open Caqti_type in
           tup3 (option string) (option string) string)
@@ -129,12 +237,12 @@ struct
         |sql}
       ;;
 
-      let update_answer connection answer =
+      let update connection answer =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec update_answer_request answer |> Lwt.map Utils.raise_caqti_error
+        Connection.exec update_request answer |> Lwt.map Utils.raise_caqti_error
       ;;
 
-      let delete_answer_request =
+      let delete_request =
         Caqti_request.exec
           Caqti_type.string
           {sql|
@@ -143,48 +251,27 @@ struct
         |sql}
       ;;
 
-      let delete_answer connection answer =
+      let delete connection answer =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec delete_answer_request answer |> Lwt.map Utils.raise_caqti_error
+        Connection.exec delete_request answer |> Lwt.map Utils.raise_caqti_error
       ;;
 
-      let insert_answer_input_type =
-        let open Caqti_type in
-        tup2
-          string
-          (tup2 string (tup2 string (tup2 string (tup2 (option string) (option string)))))
-      ;;
-
-      let insert_answer_request =
-        Caqti_request.exec
-          insert_answer_input_type
+      let is_unique ~questionnaire_id ~template_question_mapping_id ?uuid () =
+        let table_name = "quest_answers" in
+        let sql_filter =
           {sql|
-          INSERT INTO quest_answers (
-            uuid,
-            quest_questionnaire,
-            quest_template_question_mapping,
-            text,
-            storage_handle
-          ) VALUES (
-            UNHEX(REPLACE(?, '-', '')),
-            (SELECT id FROM quest_questionnaires
-            WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))),
-            (SELECT id FROM quest_template_question_mappings
-            WHERE quest_template_question_mappings.quest_template =
-                (SELECT quest_template FROM quest_questionnaires
-                WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', '')))
-              AND quest_template_question_mappings.quest_question =
-                  (SELECT id FROM quest_questions
-                  WHERE quest_questions.uuid = UNHEX(REPLACE(?, '-', '')))),
-            ?,
-            UNHEX(REPLACE(?, '-', ''))
-          );
-        |sql}
-      ;;
-
-      let insert_answer connection answer =
-        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec insert_answer_request answer |> Lwt.map Utils.raise_caqti_error
+            quest_questionnaire = (SELECT id FROM quest_questionnaires WHERE uuid = UNHEX(REPLACE(?, '-', '')) ) AND
+            quest_template_question_mapping = (SELECT id FROM quest_template_question_mappings WHERE uuid = UNHEX(REPLACE(?, '-', '')) )
+          |sql}
+        in
+        let values =
+          let open Utils.Dynparam in
+          empty
+          |> add Caqti_type.string questionnaire_id
+          |> add Caqti_type.string template_question_mapping_id
+        in
+        Sihl.Service.Database.query (fun connection ->
+            DbUtils.is_unique connection table_name ~sql_filter ~values ?uuid ())
       ;;
 
       let clean_request =
@@ -203,27 +290,27 @@ struct
           Caqti_type.string
           Model.QuestionnaireRow.t
           {sql|
-          SELECT
-            LOWER(CONCAT(
-              SUBSTR(HEX(quest_questionnaires.uuid), 1, 8), '-',
-              SUBSTR(HEX(quest_questionnaires.uuid), 9, 4), '-',
-              SUBSTR(HEX(quest_questionnaires.uuid), 13, 4), '-',
-              SUBSTR(HEX(quest_questionnaires.uuid), 17, 4), '-',
-              SUBSTR(HEX(quest_questionnaires.uuid), 21)
-            )),
-            LOWER(CONCAT(
-              SUBSTR(HEX(quest_templates.uuid), 1, 8), '-',
-              SUBSTR(HEX(quest_templates.uuid), 9, 4), '-',
-              SUBSTR(HEX(quest_templates.uuid), 13, 4), '-',
-              SUBSTR(HEX(quest_templates.uuid), 17, 4), '-',
-              SUBSTR(HEX(quest_templates.uuid), 21)
-            )),
-            quest_templates.label,
-            quest_templates.description
-          FROM quest_questionnaires
-            LEFT JOIN quest_templates ON quest_questionnaires.quest_template = quest_templates.id
-          WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
-        |sql}
+            SELECT
+              LOWER(CONCAT(
+                SUBSTR(HEX(quest_questionnaires.uuid), 1, 8), '-',
+                SUBSTR(HEX(quest_questionnaires.uuid), 9, 4), '-',
+                SUBSTR(HEX(quest_questionnaires.uuid), 13, 4), '-',
+                SUBSTR(HEX(quest_questionnaires.uuid), 17, 4), '-',
+                SUBSTR(HEX(quest_questionnaires.uuid), 21)
+              )),
+              LOWER(CONCAT(
+                SUBSTR(HEX(quest_templates.uuid), 1, 8), '-',
+                SUBSTR(HEX(quest_templates.uuid), 9, 4), '-',
+                SUBSTR(HEX(quest_templates.uuid), 13, 4), '-',
+                SUBSTR(HEX(quest_templates.uuid), 17, 4), '-',
+                SUBSTR(HEX(quest_templates.uuid), 21)
+              )),
+              quest_templates.label,
+              quest_templates.description
+            FROM quest_questionnaires
+              LEFT JOIN quest_templates ON quest_questionnaires.quest_template = quest_templates.id
+            WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
+          |sql}
       ;;
 
       let find connection id =
@@ -236,7 +323,7 @@ struct
         Connection.find find_request id |> Lwt.map Utils.raise_caqti_error
       ;;
 
-      let get_questions_request =
+      let find_questions_request =
         Caqti_request.collect
           Caqti_type.string
           Model.QuestionAnswerRow.t
@@ -290,13 +377,13 @@ struct
         |sql}
       ;;
 
-      let get_questions connection id =
+      let find_questions connection id =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.collect_list get_questions_request id
+        Connection.collect_list find_questions_request id
         |> Lwt.map Utils.raise_caqti_error
       ;;
 
-      let get_answer_request =
+      let find_answer_request =
         Caqti_request.find_opt
           (let open Caqti_type in
           tup2 string string)
@@ -333,9 +420,9 @@ struct
         |sql}
       ;;
 
-      let get_answer connection ids =
+      let find_answer connection ids =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.find_opt get_answer_request ids |> Lwt.map Utils.raise_caqti_error
+        Connection.find_opt find_answer_request ids |> Lwt.map Utils.raise_caqti_error
       ;;
 
       let clean_request =
@@ -354,16 +441,16 @@ struct
           (let open Caqti_type in
           tup3 string string (option string))
           {sql|
-          INSERT INTO quest_templates (
-            uuid,
-            label,
-            description
-          ) VALUES (
-            UNHEX(REPLACE(?, '-', '')),
-            ?,
-            ?
-          );
-        |sql}
+            INSERT INTO quest_templates (
+              uuid,
+              label,
+              description
+            ) VALUES (
+              UNHEX(REPLACE(?, '-', '')),
+              ?,
+              ?
+            );
+          |sql}
       ;;
 
       let insert_template connection template =
@@ -377,14 +464,14 @@ struct
           (let open Caqti_type in
           tup2 string string)
           {sql|
-          INSERT INTO quest_questionnaires (
-            uuid,
-            quest_template
-          ) VALUES (
-            UNHEX(REPLACE(?, '-', '')),
-            (SELECT id FROM quest_templates WHERE quest_templates.uuid = UNHEX(REPLACE(?, '-', '')))
-          );
-        |sql}
+            INSERT INTO quest_questionnaires (
+              uuid,
+              quest_template
+            ) VALUES (
+              UNHEX(REPLACE(?, '-', '')),
+              (SELECT id FROM quest_templates WHERE quest_templates.uuid = UNHEX(REPLACE(?, '-', '')))
+            );
+          |sql}
       ;;
 
       let insert_questionnaire connection questionnaire =
@@ -409,20 +496,20 @@ struct
           (let open Caqti_type in
           tup2 string (tup2 string (tup2 string (tup2 int bool))))
           {sql|
-          INSERT INTO quest_template_question_mappings (
-            uuid,
-            quest_template,
-            quest_question,
-            question_order,
-            required
-          ) VALUES (
-            UNHEX(REPLACE(?, '-', '')),
-            (SELECT id FROM quest_templates WHERE quest_templates.uuid = UNHEX(REPLACE(?, '-', ''))),
-            (SELECT id FROM quest_questions WHERE quest_questions.uuid = UNHEX(REPLACE(?, '-', ''))),
-            ?,
-            ?
-          );
-        |sql}
+            INSERT INTO quest_template_question_mappings (
+              uuid,
+              quest_template,
+              quest_question,
+              question_order,
+              required
+            ) VALUES (
+              UNHEX(REPLACE(?, '-', '')),
+              (SELECT id FROM quest_templates WHERE quest_templates.uuid = UNHEX(REPLACE(?, '-', ''))),
+              (SELECT id FROM quest_questions WHERE quest_questions.uuid = UNHEX(REPLACE(?, '-', ''))),
+              ?,
+              ?
+            );
+          |sql}
       ;;
 
       let insert_mapping connection mapping =
