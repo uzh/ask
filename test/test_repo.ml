@@ -70,9 +70,20 @@ let test2 _ () =
       ~description:"This is a description."
       ~questions:
         [ ( Model.Question.Text
-              ("1", Some "Current status", None, "How are you?", None, ".*", false)
+              ( "1"
+              , Some "Current status"
+              , Some "Enter your age."
+              , "How are you?"
+              , None
+              , ".*"
+              , false )
           , Some (Model.AnswerInput.Text "My answer.") )
-        ; ( Model.Question.YesNo ("2", Some "Well-being", None, "Are you well?", true)
+        ; ( Model.Question.YesNo
+              ( "2"
+              , Some "Well-being"
+              , Some "Enter your level of well-being."
+              , "Are you well?"
+              , true )
           , Some (Model.AnswerInput.Text "Yes") )
         ]
       ()

@@ -1,5 +1,7 @@
 open Lwt.Syntax
 
+exception Exception of string
+
 let lwt_check_raises f msg =
   let* result =
     Lwt.catch
@@ -10,7 +12,7 @@ let lwt_check_raises f msg =
   in
   match result with
   | Ok () -> Alcotest.fail "No exception was thrown"
-  | Error (Quest.Service.Exception e_msg) ->
+  | Error (Exception e_msg) ->
     Alcotest.(check string "Correct exception" msg e_msg);
     Lwt.return ()
   | Error e ->

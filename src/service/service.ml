@@ -1,14 +1,9 @@
 open Lwt.Syntax
-module Option = CCOpt
-module Result = CCResult
-module Database = Sihl.Service.Database
 
 let name = "quest"
 let log_src = Logs.Src.create name
 
 module Logs = (val Logs.src_log log_src : Logs.LOG)
-
-exception Exception of string
 
 module type Sig = sig
   module Questionnaire : sig
@@ -73,12 +68,12 @@ module Make (Repo : Repository.Sig) (StorageRepo : Sihl.Service.Storage.Repo.Sig
         let* asset_id =
           Repo.Questionnaire.find_asset_id ~questionnaire_id ~question_id
           |> Lwt.map
-               (Option.to_result
+               (CCOpt.to_result
                   (Caml.Format.asprintf
                      "Asset id not found for questionnaire_id %s and question_id %s"
                      questionnaire_id
                      question_id))
-          |> Lwt.map Result.get_or_failwith
+          |> Lwt.map CCResult.get_or_failwith
         in
         let* file = Storage.find ~id:asset_id in
         let updated_file =
@@ -94,12 +89,12 @@ module Make (Repo : Repository.Sig) (StorageRepo : Sihl.Service.Storage.Repo.Sig
         let* asset_id =
           Repo.Questionnaire.find_asset_id ~questionnaire_id ~question_id
           |> Lwt.map
-               (Option.to_result
+               (CCOpt.to_result
                   (Caml.Format.asprintf
                      "Asset id not found for questionnaire_id %s and question_id %s"
                      questionnaire_id
                      question_id))
-          |> Lwt.map Result.get_or_failwith
+          |> Lwt.map CCResult.get_or_failwith
         in
         let* _ = Storage.delete ~id:asset_id in
         Repo.Questionnaire.delete_answer ~questionnaire_id ~question_id
@@ -113,13 +108,13 @@ module Make (Repo : Repository.Sig) (StorageRepo : Sihl.Service.Storage.Repo.Sig
     let find id = Repo.Questionnaire.find id
 
     let create_template ?id ~label ?description () =
-      let id = id |> Option.value ~default:(Uuidm.create `V4 |> Uuidm.to_string) in
+      let id = id |> CCOpt.value ~default:(Uuidm.create `V4 |> Uuidm.to_string) in
       let* () = Repo.Questionnaire.create_template ~id ~label ~description in
       Lwt.return id
     ;;
 
     let answer questionnaire answers =
-      let events = Model.Questionnaire.answer questionnaire answers |> Result.get_exn in
+      let events = Model.Questionnaire.answer questionnaire answers |> CCResult.get_exn in
       let rec handle_events events =
         match events with
         | event :: events ->
@@ -133,7 +128,7 @@ module Make (Repo : Repository.Sig) (StorageRepo : Sihl.Service.Storage.Repo.Sig
     let add_question ~template_id ~order question =
       let question_id = Model.Question.uuid question in
       let mapping_id = Uuidm.create `V4 |> Uuidm.to_string in
-      Database.transaction (fun connection ->
+      Sihl.Service.Database.transaction (fun connection ->
           let* () = Repo.Questionnaire.create_question ~connection ~question in
           let* () =
             Repo.Questionnaire.create_mapping
@@ -166,5 +161,7 @@ module Make (Repo : Repository.Sig) (StorageRepo : Sihl.Service.Storage.Repo.Sig
   ;;
 end
 
-(* module MariaDb = Make (Repository.MariaDB (Sihl.Database.Migration.MariaDB))
-   (Sihl.Database.Repo.Storage) *)
+module MigrationRepo = Sihl.Service.Migration_repo.MariaDb
+module MigrationService = Sihl.Service.Migration.Make (MigrationRepo)
+module StorageRepo = Sihl.Service.Storage_repo.MakeMariaDb (MigrationService)
+module MariaDb = Make (Repository.MariaDB (MigrationService)) (StorageRepo)

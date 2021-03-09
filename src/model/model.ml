@@ -1,7 +1,3 @@
-module List = CCList
-module Option = CCOpt
-module String = CCString
-
 module AnswerInput = struct
   type uuid = string option [@@deriving yojson, show, eq]
   type filename = string [@@deriving yojson, show, eq]
@@ -153,16 +149,16 @@ module Question = struct
       | false -> validation_error (uuid question) "Invalid value provided")
     | Country (_, _, _, _, _), Some (AnswerInput.Text answer) ->
       (match
-         ( String.is_empty answer
-         , List.exists
-             (fun (country, _) -> String.equal country answer)
+         ( CCString.is_empty answer
+         , CCList.exists
+             (fun (_, country) -> CCString.equal country answer)
              Model_utils.countries )
        with
       | true, _ -> Ok ()
       | false, true -> Ok ()
       | false, false -> validation_error (uuid question) "Invalid value provided")
     | Select (_, _, _, _, options, _), Some (AnswerInput.Text answer) ->
-      (match options |> List.find_opt (String.equal answer) |> Option.is_some with
+      (match options |> CCList.find_opt (CCString.equal answer) |> CCOpt.is_some with
       | true -> Ok ()
       | false -> validation_error (uuid question) "Please select on of the options")
     | YesNo (_, _, _, _, _), Some (AnswerInput.Text answer) ->
@@ -189,9 +185,9 @@ module Question = struct
       let size_mb =
         CCFloat.of_int size_byte *. (10. ** -6.) |> CCFloat.round |> CCInt.of_float
       in
-      (match size_mb <= max_file_sizeMb, List.mem mime_type supported_mime_types with
+      (match size_mb <= max_file_sizeMb, CCList.mem mime_type supported_mime_types with
       | true, true -> Ok ()
-      | _, true ->
+      | false, true ->
         validation_error
           (uuid question)
           (Caml.Format.asprintf "Asset file size too big (max. %d)" size_mb)
@@ -212,7 +208,7 @@ module QuestionAnswer = struct
 
   let are_all_required_questions_answered question_input =
     question_input
-    |> List.for_all (fun (question, answer) ->
+    |> CCList.for_all (fun (question, answer) ->
            match Question.is_required question, answer with
            | true, None -> false
            | _, _ -> true)
@@ -220,7 +216,7 @@ module QuestionAnswer = struct
 
   let are_all_answered_questions_valid question_input =
     question_input
-    |> List.for_all (fun ((question : Question.t), answer) ->
+    |> CCList.for_all (fun ((question : Question.t), answer) ->
            match answer with
            | Some answer -> Question.is_valid question answer
            | None -> true)
@@ -232,7 +228,7 @@ module QuestionAnswer = struct
   ;;
 
   let filter_asset_out question_answers =
-    List.filter
+    CCList.filter
       (fun (question, _) ->
         match question with
         | Question.File _ -> false
@@ -247,13 +243,13 @@ module QuestionAnswer = struct
     =
     let found_index =
       question_answers
-      |> List.find_idx (fun (existing_question, _) ->
+      |> CCList.find_idx (fun (existing_question, _) ->
              Question.uuid existing_question == Question.uuid question)
     in
     match found_index with
     | None -> question_answers
     | Some (index_to_update, (question_to_answer, _)) ->
-      List.mapi
+      CCList.mapi
         (fun index old_answer ->
           if index = index_to_update then question_to_answer, answer else old_answer)
         question_answers
@@ -298,14 +294,14 @@ module Questionnaire = struct
 
   let set_question_with_id_to_optional ~question_id ~questions =
     questions
-    |> List.map (fun (q, a) ->
+    |> CCList.map (fun (q, a) ->
            match Question.uuid q == question_id with
            | true -> set_question_to_optional (q, a)
            | false -> q, a)
   ;;
 
   let set_all_questions_to_optional questionnaire =
-    let questions = questionnaire.questions |> List.map set_question_to_optional in
+    let questions = questionnaire.questions |> CCList.map set_question_to_optional in
     { questionnaire with questions }
   ;;
 
@@ -313,20 +309,20 @@ module Questionnaire = struct
     let rec loop questions errors events =
       match questions with
       | ((question, _) as current) :: questions ->
-        let question_answer =
-          List.find
+        let answer =
+          CCList.find_opt
             (fun (answer_question, _) -> Question.equal answer_question question)
             answers
         in
-        let _, answer_input = question_answer in
-        (match Question.validate question answer_input, answer_input with
-        | Error msg, _ -> loop questions (List.cons msg errors) events
-        | Ok (), Some _ ->
-          (match QuestionAnswer.event questionnaire.uuid current question_answer with
-          | Some event -> loop questions errors (List.cons event events)
+        let answer_input = CCOpt.bind answer (fun (_, answer) -> answer) in
+        (match Question.validate question answer_input, answer with
+        | Error msg, _ -> loop questions (CCList.cons msg errors) events
+        | Ok (), Some answer ->
+          (match QuestionAnswer.event questionnaire.uuid current answer with
+          | Some event -> loop questions errors (CCList.cons event events)
           | None -> loop questions errors events)
         | Ok (), None -> loop questions errors events)
-      | [] -> events |> List.rev, errors |> List.rev
+      | [] -> events |> CCList.rev, errors |> CCList.rev
     in
     let events, errors =
       match answers with
@@ -341,7 +337,8 @@ module Questionnaire = struct
         let questions = QuestionAnswer.filter_asset_out questionnaire.questions in
         loop questions [] []
     in
-    match List.is_empty errors with
+    Logs.info (fun m -> m "%s" (CCString.concat ";;" errors));
+    match CCList.is_empty errors with
     | true -> Ok events
     | false -> Error errors
   ;;

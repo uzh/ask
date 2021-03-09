@@ -1,4 +1,4 @@
-(lang dune 2.7)
+(lang dune 2.8)
 
 (generate_opam_files true)
 
@@ -25,7 +25,7 @@
  (depends
   ;; General system dependencies
   (dune
-   (>= 2.7))
+   (>= 2.8))
   (ocaml
    (>= 4.11))
   (lwt

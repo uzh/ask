@@ -10,7 +10,7 @@ homepage: "tbd"
 doc: "tbd"
 bug-reports: "tbd/-/issues"
 depends: [
-  "dune" {>= "2.7" & >= "2.7"}
+  "dune" {>= "2.8" & >= "2.8"}
   "ocaml" {>= "4.11"}
   "lwt" {>= "5.3.0"}
   "base" {>= "v0.13.1"}
