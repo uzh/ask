@@ -1,5 +1,6 @@
 /_build/
 /_opam/
+/logs/
 .merlin
 .devcontainer/data/
 .env

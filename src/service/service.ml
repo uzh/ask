@@ -156,7 +156,17 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
     ;;
 
     let answer questionnaire answers =
-      let events = Model.Questionnaire.answer questionnaire answers |> CCResult.get_exn in
+      (* TODO: Remove Base dependency *)
+      let events =
+        Model.Questionnaire.answer questionnaire answers
+        |> Base.Result.map_error ~f:(fun errors ->
+               errors
+               |> CCList.head_opt
+               |> Base.Option.value_map
+                    ~f:(fun e -> Exception e)
+                    ~default:(Exception "Could not answer questionnaire"))
+        |> Base.Result.ok_exn
+      in
       let rec handle_events events =
         match events with
         | event :: events ->

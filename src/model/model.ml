@@ -142,11 +142,13 @@ module Question = struct
       (match is_required question with
       | true -> validation_error (uuid question) "Required"
       | false -> Ok ())
-    | Text (_, _, _, _, _, regex, _), Some (AnswerInput.Text answer) ->
+    | Text (_, _, _, _, _, regex, required), Some (AnswerInput.Text answer) ->
       let regex = Sihl.Utils.Regex.of_string regex in
-      (match Sihl.Utils.Regex.test regex answer with
-      | true -> Ok ()
-      | false -> validation_error (uuid question) "Invalid value provided")
+      (match CCString.is_empty answer, Sihl.Utils.Regex.test regex answer with
+      | false, true -> Ok ()
+      | true, _ when required -> validation_error (uuid question) "Required"
+      | true, true -> Ok ()
+      | _, false -> validation_error (uuid question) "Invalid value provided")
     | Country (_, _, _, _, _), Some (AnswerInput.Text answer) ->
       (match
          ( CCString.is_empty answer
@@ -337,7 +339,6 @@ module Questionnaire = struct
         let questions = QuestionAnswer.filter_asset_out questionnaire.questions in
         loop questions [] []
     in
-    Logs.info (fun m -> m "%s" (CCString.concat ";;" errors));
     match CCList.is_empty errors with
     | true -> Ok events
     | false -> Error errors

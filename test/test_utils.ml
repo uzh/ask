@@ -15,6 +15,12 @@ let lwt_check_raises f msg =
   | Error (Exception e_msg) ->
     Alcotest.(check string "Correct exception" msg e_msg);
     Lwt.return ()
+  | Error (Quest.MariaDb.Questionnaire.Exception e_msg) ->
+    Alcotest.(check string "Correct exception" msg e_msg);
+    Lwt.return ()
+  | Error CCResult.Get_error ->
+    Alcotest.(check string "Correct exception" msg "CCResult.Get_error");
+    Lwt.return ()
   | Error e ->
     let msg = Caml.Printexc.to_string e
     and stack = Caml.Printexc.get_backtrace () in
