@@ -542,7 +542,7 @@ module MariaDB () = struct
     end
 
     let clean () =
-      Database.query (fun connection ->
+      DbUtils.with_disabled_fk_check (fun connection ->
           let* () = QuestionRow.clean connection in
           let* () = TemplateRow.clean connection in
           let* () = QuestionnaireRow.clean connection in

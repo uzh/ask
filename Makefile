@@ -10,7 +10,7 @@ clean:
 	opam exec -- dune clean
 
 test:
-	SIHL_ENV=test ./_build/default/test/test.exe test
+	SIHL_ENV=test dune runtest --force --no-buffer test
 
 doc:
 	opam exec -- dune build @doc

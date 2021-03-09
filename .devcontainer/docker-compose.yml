@@ -14,13 +14,13 @@ services:
       - ${HOME}${USERPROFILE}/.gitconfig:/home/opam/.gitconfig
       - ${HOME}${USERPROFILE}/.gitignore_global:/home/opam/.gitignore_global
     depends_on: [database]
-    ports: [3010:3000]
+    ports: [3000:3000]
     command: /workspace/.devcontainer/wait-for-database.sh test sleep infinity
 
   database:
     image: mariadb:10.3
     command: --max_allowed_packet=629145600
-    ports: [3310:3306]
+    ports: [3306:3306]
     environment:
       - TZ=Europe/Zurich
       - MYSQL_ALLOW_EMPTY_PASSWORD='yes'

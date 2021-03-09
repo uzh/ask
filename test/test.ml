@@ -99,6 +99,14 @@ let () =
   let () = Test_utils.setup_test () in
   Lwt_main.run
     (let* _ = Sihl.Container.start_services services in
-     (* let* _ = Migration.run_all () in *)
+     Sihl.App.(
+       empty
+       |> before_start (fun () -> Lwt.return (Test_utils.set_database_url ()))
+       |> with_services services
+       |> before_start (fun () ->
+              Printexc.record_backtrace true;
+              Lwt.return (Test_utils.set_database_url ()))
+       |> run);
+     let* _ = Migration.run_all () in
      Alcotest_lwt.run "questionnaire component" @@ suite)
 ;;

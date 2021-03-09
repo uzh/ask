@@ -12,8 +12,8 @@
   ],
   "workspaceFolder": "/workspace",
   "remoteEnv": {
-    "DEVELOPMENT_DATABASE_URL": "mariadb://root@database:3310/development",
-    "TEST_DATABASE_URL": "mariadb://root@database:3310/test",
+    "DEVELOPMENT_DATABASE_URL": "mariadb://root@database:3306/development",
+    "TEST_DATABASE_URL": "mariadb://root@database:3306/test",
     "VERSION": "dev",
     "OPAM_SWITCH_PREFIX": "/home/opam/.opam/4.11",
     "CAML_LD_LIBRARY_PATH": "/home/opam/.opam/4.11/lib/stublibs:/home/opam/.opam/4.11/lib/ocaml/stublibs:/home/opam/.opam/4.11/lib/ocaml",
