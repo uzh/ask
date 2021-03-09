@@ -32,14 +32,56 @@ module type Sig = sig
     val add_question : template_id:string -> order:int -> Model.Question.t -> string Lwt.t
   end
 
+  module Internal__ : sig
+    val clean : unit -> unit Lwt.t
+
+    module Model : sig
+      module QuestionnaireRow : sig
+        val make
+          :  uuid:string
+          -> template_uuid:string
+          -> template_label:string
+          -> ?template_description:string
+          -> unit
+          -> Repository_model.QuestionnaireRow.t
+
+        val to_questionnaire
+          :  Repository_model.QuestionnaireRow.t
+          -> Repository_model.QuestionAnswerRow.t list
+          -> Model.Questionnaire.t
+      end
+
+      module QuestionAnswerRow : sig
+        val make
+          :  question_uuid:string
+          -> ?question_label:string
+          -> ?question_help_text:string
+          -> question_text:string
+          -> question_required:int
+          -> ?question_default_value:string
+          -> question_validation_regex:string
+          -> question_type:string
+          -> ?question_max_file_size:int
+          -> ?question_mime_types:string
+          -> ?question_options:string
+          -> ?answer_uuid:string
+          -> ?answer_text:string
+          -> ?answer_asset_uuid:string
+          -> ?answer_asset_filename:string
+          -> ?answer_asset_size:int
+          -> ?answer_asset_mime:string
+          -> unit
+          -> Repository_model.QuestionAnswerRow.t
+      end
+    end
+  end
+
   val register : unit -> Sihl.Container.Service.t
 
   include Sihl.Container.Service.Sig
 end
 
-module Make (Repo : Repository.Sig) (StorageRepo : Sihl.Service.Storage.Repo.Sig) = struct
-  module Storage = Sihl.Service.Storage.Make (StorageRepo)
-
+module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = struct
   module Questionnaire = struct
     exception Exception of string
 
@@ -147,6 +189,16 @@ module Make (Repo : Repository.Sig) (StorageRepo : Sihl.Service.Storage.Repo.Sig
     ;;
   end
 
+  module Internal__ = struct
+    (* USE ON YOUR OWN RISK -- Internal functions are used for testing *)
+    let clean () = Repo.clean ()
+
+    module Model = struct
+      module QuestionnaireRow = Repository_model.QuestionnaireRow
+      module QuestionAnswerRow = Repository_model.QuestionAnswerRow
+    end
+  end
+
   let start () = Lwt.return ()
   let stop _ = Lwt.return ()
 
@@ -164,4 +216,5 @@ end
 module MigrationRepo = Sihl.Service.Migration_repo.MariaDb
 module MigrationService = Sihl.Service.Migration.Make (MigrationRepo)
 module StorageRepo = Sihl.Service.Storage_repo.MakeMariaDb (MigrationService)
-module MariaDb = Make (Repository.MariaDB (MigrationService)) (StorageRepo)
+module Storage = Sihl.Service.Storage.Make (StorageRepo)
+module MariaDb = Make (Repository.MariaDB (MigrationService)) (Storage)
