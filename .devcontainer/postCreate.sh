@@ -18,9 +18,9 @@ opam pin add -yn ocaml-lsp-server https://github.com/ocaml/ocaml-lsp.git
 opam install caqti-driver-mariadb ocamlformat ocaml-lsp-server sihl
 
 # install project dependancies
-opam pin add -y -n question .
-OPAMSOLVERTIMEOUT=180 opam depext -y question
-opam install --deps-only -y question --with-test
+opam pin add -y -n quest .
+OPAMSOLVERTIMEOUT=180 opam depext -y quest
+opam install --deps-only -y quest --with-test
 opam install -y alcotest-lwt
 
 # initialize project and update environmemnt

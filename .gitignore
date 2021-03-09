@@ -1,5 +1,5 @@
 /_build/
 /_opam/
 .merlin
-old/
 .devcontainer/data/
+.env
