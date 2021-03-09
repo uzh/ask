@@ -1,6 +1,6 @@
 open Lwt.Syntax
 
-module Make (QuestService : Quest.Service.Sig) = struct
+module Make (QuestService : Quest.Sig) = struct
   module AttributeTest = struct
     module Model = Quest.Model
 

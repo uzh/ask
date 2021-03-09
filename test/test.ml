@@ -1,4 +1,3 @@
-open Base
 open Alcotest_lwt
 open Lwt.Syntax
 
@@ -8,16 +7,15 @@ module Migration = Sihl.Service.Migration.Make (MigrationRepo)
 
 (* Repositories *)
 module StorageRepo = Sihl.Service.Storage_repo.MakeMariaDb (Migration)
-module QuestRepo = Quest.Repository.MariaDB (Migration)
 
 (* Services *)
 module Repository = Sihl.Service.Repository
 module Database = Sihl.Service.Database
 module Storage = Sihl.Service.Storage.Make (StorageRepo)
-module QuestService = Quest.Service.Make (QuestRepo) (StorageRepo)
+module QuestService = Quest.MariaDb
 
 (* Test service *)
-module TestService = Test_service.Make (QuestService) (QuestRepo) (Storage)
+module TestService = Test_service.Make (QuestService) (Storage)
 
 let suite =
   [ ( "questionnaire model"
@@ -101,5 +99,6 @@ let () =
   let () = Test_utils.setup_test () in
   Lwt_main.run
     (let* _ = Sihl.Container.start_services services in
+     (* let* _ = Migration.run_all () in *)
      Alcotest_lwt.run "questionnaire component" @@ suite)
 ;;
