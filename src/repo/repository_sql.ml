@@ -1,15 +1,29 @@
 open Lwt.Syntax
+module Database = Sihl.Service.Database
 module Utils = Repository_utils
 
-module MakeMariaDb (MigrationService : Sihl.Contract.Migration.Sig) : Repository.Sig =
-struct
-  let lifecycles = [ Sihl.Service.Database.lifecycle; MigrationService.lifecycle ]
-
-  module Migration = Repository_migration
-
-  let register_migration () = MigrationService.register_migration (Migration.migration ())
-
+module MariaDB () = struct
   module DbUtils = struct
+    let set_fk_check_request =
+      Caqti_request.exec Caqti_type.bool "SET FOREIGN_KEY_CHECKS = ?;"
+    ;;
+
+    let with_disabled_fk_check f =
+      Database.query (fun connection ->
+          let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+          let* () =
+            Connection.exec set_fk_check_request false |> Lwt.map Utils.raise_caqti_error
+          in
+          Lwt.finalize
+            (fun () -> f connection)
+            (fun () ->
+              Connection.exec set_fk_check_request true |> Lwt.map Utils.raise_caqti_error))
+    ;;
+
+    let found_rows_request =
+      Caqti_request.find Caqti_type.unit Caqti_type.int "SELECT FOUND_ROWS()"
+    ;;
+
     let is_unique_request table_name sql_filter request_types sql_joins =
       let sql_request =
         Caml.Format.asprintf
@@ -218,7 +232,7 @@ struct
         |sql}
       ;;
 
-      let insert_answer connection answer =
+      let insert connection answer =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
         Connection.exec insert_request answer |> Lwt.map Utils.raise_caqti_error
       ;;
@@ -270,7 +284,7 @@ struct
           |> add Caqti_type.string questionnaire_id
           |> add Caqti_type.string template_question_mapping_id
         in
-        Sihl.Service.Database.query (fun connection ->
+        Database.query (fun connection ->
             DbUtils.is_unique connection table_name ~sql_filter ~values ?uuid ())
       ;;
 
@@ -425,6 +439,26 @@ struct
         Connection.find_opt find_answer_request ids |> Lwt.map Utils.raise_caqti_error
       ;;
 
+      let insert_request =
+        Caqti_request.exec
+          (let open Caqti_type in
+          tup2 string string)
+          {sql|
+            INSERT INTO quest_questionnaires (
+              uuid,
+              quest_template
+            ) VALUES (
+              UNHEX(REPLACE(?, '-', '')),
+              (SELECT id FROM quest_templates WHERE quest_templates.uuid = UNHEX(REPLACE(?, '-', '')))
+            );
+          |sql}
+      ;;
+
+      let insert connection questionnaire =
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.exec insert_request questionnaire |> Lwt.map Utils.raise_caqti_error
+      ;;
+
       let clean_request =
         Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_questionnaires;"
       ;;
@@ -436,7 +470,7 @@ struct
     end
 
     module TemplateRow = struct
-      let insert_template_request =
+      let insert_request =
         Caqti_request.exec
           (let open Caqti_type in
           tup3 string string (option string))
@@ -453,31 +487,9 @@ struct
           |sql}
       ;;
 
-      let insert_template connection template =
+      let insert connection template =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec insert_template_request template
-        |> Lwt.map Utils.raise_caqti_error
-      ;;
-
-      let insert_questionnaire_request =
-        Caqti_request.exec
-          (let open Caqti_type in
-          tup2 string string)
-          {sql|
-            INSERT INTO quest_questionnaires (
-              uuid,
-              quest_template
-            ) VALUES (
-              UNHEX(REPLACE(?, '-', '')),
-              (SELECT id FROM quest_templates WHERE quest_templates.uuid = UNHEX(REPLACE(?, '-', '')))
-            );
-          |sql}
-      ;;
-
-      let insert_questionnaire connection questionnaire =
-        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec insert_questionnaire_request questionnaire
-        |> Lwt.map Utils.raise_caqti_error
+        Connection.exec insert_request template |> Lwt.map Utils.raise_caqti_error
       ;;
 
       let clean_request =
@@ -491,7 +503,7 @@ struct
     end
 
     module Mapping = struct
-      let insert_mapping_request =
+      let insert_request =
         Caqti_request.exec
           (let open Caqti_type in
           tup2 string (tup2 string (tup2 string (tup2 int bool))))
@@ -512,9 +524,9 @@ struct
           |sql}
       ;;
 
-      let insert_mapping connection mapping =
+      let insert connection mapping =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec insert_mapping_request mapping |> Lwt.map Utils.raise_caqti_error
+        Connection.exec insert_request mapping |> Lwt.map Utils.raise_caqti_error
       ;;
 
       let clean_request =
@@ -530,7 +542,7 @@ struct
     end
 
     let clean () =
-      Sihl.Service.Database.query (fun connection ->
+      Database.query (fun connection ->
           let* () = QuestionRow.clean connection in
           let* () = TemplateRow.clean connection in
           let* () = QuestionnaireRow.clean connection in
@@ -538,6 +550,4 @@ struct
           AnswerRow.clean connection)
     ;;
   end
-
-  let register_cleaner () = Sihl.Service.Repository.register_cleaner Sql.clean
 end

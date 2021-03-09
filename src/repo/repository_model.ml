@@ -1,13 +1,3 @@
-let map2 ~f a b =
-  match a, b with
-  | Ok a, Ok b -> Ok (f a b)
-  | Error a, Ok _ -> Error a
-  | Ok _, Error b -> Error b
-  | Error a, Error _ -> Error a
-;;
-
-let combine l = List.fold_right (map2 ~f:(fun a b -> a :: b)) l (Ok [])
-
 module QuestionRow = struct
   type t =
     { id : string
@@ -158,285 +148,288 @@ module QuestionAnswerRow = struct
 
   let int_to_bool n = n != 0
 
-  let to_question_answer_input rows =
-    rows
-    |> List.map (fun row ->
-           match row with
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_default_value = default_value
-             ; question_validation_regex = regex
-             ; question_type = "text"
-             ; question_required = required
-             ; answer_uuid = Some _
-             ; answer_text = Some text
-             ; _
-             } ->
-             Ok
-               ( Model.Question.Text
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , default_value
-                   , regex
-                   , int_to_bool required )
-               , Some (Model.AnswerInput.Text text) )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_default_value = default_value
-             ; question_validation_regex = regex
-             ; question_type = "text"
-             ; question_required = required
-             ; answer_uuid = None
-             ; _
-             } ->
-             Ok
-               ( Model.Question.Text
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , default_value
-                   , regex
-                   , int_to_bool required )
-               , None )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_type = "y/n"
-             ; question_required = required
-             ; answer_uuid = Some _
-             ; answer_text = Some text
-             ; _
-             } ->
-             Ok
-               ( Model.Question.YesNo
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , int_to_bool required )
-               , Some (Model.AnswerInput.Text text) )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_required = required
-             ; question_type = "y/n"
-             ; answer_uuid = None
-             ; _
-             } ->
-             Ok
-               ( Model.Question.YesNo
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , int_to_bool required )
-               , None )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_required = required
-             ; question_type = "date"
-             ; answer_uuid = Some _
-             ; answer_text = Some text
-             ; _
-             } ->
-             Ok
-               ( Model.Question.Date
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , int_to_bool required )
-               , Some (Model.AnswerInput.Text text) )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_required = required
-             ; question_type = "date"
-             ; answer_uuid = None
-             ; _
-             } ->
-             Ok
-               ( Model.Question.Date
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , int_to_bool required )
-               , None )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_required = required
-             ; question_type = "country"
-             ; answer_uuid = Some _
-             ; answer_text = Some text
-             ; _
-             } ->
-             Ok
-               ( Model.Question.Country
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , int_to_bool required )
-               , Some (Model.AnswerInput.Text text) )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_required = required
-             ; question_type = "country"
-             ; answer_uuid = None
-             ; _
-             } ->
-             Ok
-               ( Model.Question.Country
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , int_to_bool required )
-               , None )
-           | { question_uuid
-             ; question_label = label
-             ; question_help_text = help_text
-             ; question_text = text
-             ; question_required = required
-             ; question_type = "file"
-             ; question_max_file_size = Some max_file_size
-             ; question_mime_types = Some supported_mime_types
-             ; answer_uuid = Some _
-             ; answer_asset_uuid = Some asset_id
-             ; answer_asset_filename = Some filename
-             ; answer_asset_size = Some size
-             ; answer_asset_mime = Some mime
-             ; _
-             } ->
-             Ok
-               ( Model.Question.File
-                   ( question_uuid
-                   , label
-                   , help_text
-                   , text
-                   , Str.split (Str.regexp_string ",") supported_mime_types
-                   , max_file_size
-                   , int_to_bool required )
-               , Some (Model.AnswerInput.Asset (Some asset_id, filename, size, mime, ""))
-               )
-           | { question_uuid
-             ; question_label = label
-             ; question_help_text = help_text
-             ; question_text = text
-             ; question_required = required
-             ; question_type = "file"
-             ; question_max_file_size = Some max_file_size
-             ; question_mime_types = Some supported_mime_types
-             ; answer_asset_uuid = None
-             ; _
-             } ->
-             Ok
-               ( Model.Question.File
-                   ( question_uuid
-                   , label
-                   , help_text
-                   , text
-                   , Str.split (Str.regexp_string ",") supported_mime_types
-                   , max_file_size
-                   , int_to_bool required )
-               , None )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_required = required
-             ; question_type = "year"
-             ; answer_uuid = Some _
-             ; answer_text = Some text
-             ; _
-             } ->
-             Ok
-               ( Model.Question.Year
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , int_to_bool required )
-               , Some (Model.AnswerInput.Text text) )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_required = required
-             ; question_type = "year"
-             ; answer_uuid = None
-             ; _
-             } ->
-             Ok
-               ( Model.Question.Year
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , int_to_bool required )
-               , None )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_required = required
-             ; question_type = "select"
-             ; question_options = Some options
-             ; answer_uuid = Some _
-             ; answer_text = Some text
-             ; _
-             } ->
-             Ok
-               ( Model.Question.Select
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , Str.split (Str.regexp_string ",") options
-                   , int_to_bool required )
-               , Some (Model.AnswerInput.Text text) )
-           | { question_uuid
-             ; question_label
-             ; question_help_text
-             ; question_text
-             ; question_required = required
-             ; question_type = "select"
-             ; question_options = Some options
-             ; answer_uuid = None
-             ; _
-             } ->
-             Ok
-               ( Model.Question.Select
-                   ( question_uuid
-                   , question_label
-                   , question_help_text
-                   , question_text
-                   , Str.split (Str.regexp_string ",") options
-                   , int_to_bool required )
-               , None )
-           | { question_type = type_; question_uuid = id; _ } ->
-             Logs.err (fun m ->
-                 m "Invalid question type encountered %s for question with id %s" type_ id);
-             Error ("Invalid question type encountered " ^ type_))
-    |> combine
+  let row_to_question_answer_input row =
+    match row with
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_default_value = default_value
+      ; question_validation_regex = regex
+      ; question_type = "text"
+      ; question_required = required
+      ; answer_uuid = Some _
+      ; answer_text = Some text
+      ; _
+      } ->
+      Ok
+        ( Model.Question.Text
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , default_value
+            , regex
+            , int_to_bool required )
+        , Some (Model.AnswerInput.Text text) )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_default_value = default_value
+      ; question_validation_regex = regex
+      ; question_type = "text"
+      ; question_required = required
+      ; answer_uuid = None
+      ; _
+      } ->
+      Ok
+        ( Model.Question.Text
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , default_value
+            , regex
+            , int_to_bool required )
+        , None )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_type = "y/n"
+      ; question_required = required
+      ; answer_uuid = Some _
+      ; answer_text = Some text
+      ; _
+      } ->
+      Ok
+        ( Model.Question.YesNo
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , int_to_bool required )
+        , Some (Model.AnswerInput.Text text) )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_required = required
+      ; question_type = "y/n"
+      ; answer_uuid = None
+      ; _
+      } ->
+      Ok
+        ( Model.Question.YesNo
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , int_to_bool required )
+        , None )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_required = required
+      ; question_type = "date"
+      ; answer_uuid = Some _
+      ; answer_text = Some text
+      ; _
+      } ->
+      Ok
+        ( Model.Question.Date
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , int_to_bool required )
+        , Some (Model.AnswerInput.Text text) )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_required = required
+      ; question_type = "date"
+      ; answer_uuid = None
+      ; _
+      } ->
+      Ok
+        ( Model.Question.Date
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , int_to_bool required )
+        , None )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_required = required
+      ; question_type = "country"
+      ; answer_uuid = Some _
+      ; answer_text = Some text
+      ; _
+      } ->
+      Ok
+        ( Model.Question.Country
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , int_to_bool required )
+        , Some (Model.AnswerInput.Text text) )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_required = required
+      ; question_type = "country"
+      ; answer_uuid = None
+      ; _
+      } ->
+      Ok
+        ( Model.Question.Country
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , int_to_bool required )
+        , None )
+    | { question_uuid
+      ; question_label = label
+      ; question_help_text = help_text
+      ; question_text = text
+      ; question_required = required
+      ; question_type = "file"
+      ; question_max_file_size = Some max_file_size
+      ; question_mime_types = Some supported_mime_types
+      ; answer_uuid = Some _
+      ; answer_asset_uuid = Some asset_id
+      ; answer_asset_filename = Some filename
+      ; answer_asset_size = Some size
+      ; answer_asset_mime = Some mime
+      ; _
+      } ->
+      Ok
+        ( Model.Question.File
+            ( question_uuid
+            , label
+            , help_text
+            , text
+            , Str.split (Str.regexp_string ",") supported_mime_types
+            , max_file_size
+            , int_to_bool required )
+        , Some (Model.AnswerInput.Asset (Some asset_id, filename, size, mime, "")) )
+    | { question_uuid
+      ; question_label = label
+      ; question_help_text = help_text
+      ; question_text = text
+      ; question_required = required
+      ; question_type = "file"
+      ; question_max_file_size = Some max_file_size
+      ; question_mime_types = Some supported_mime_types
+      ; answer_asset_uuid = None
+      ; _
+      } ->
+      Ok
+        ( Model.Question.File
+            ( question_uuid
+            , label
+            , help_text
+            , text
+            , Str.split (Str.regexp_string ",") supported_mime_types
+            , max_file_size
+            , int_to_bool required )
+        , None )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_required = required
+      ; question_type = "year"
+      ; answer_uuid = Some _
+      ; answer_text = Some text
+      ; _
+      } ->
+      Ok
+        ( Model.Question.Year
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , int_to_bool required )
+        , Some (Model.AnswerInput.Text text) )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_required = required
+      ; question_type = "year"
+      ; answer_uuid = None
+      ; _
+      } ->
+      Ok
+        ( Model.Question.Year
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , int_to_bool required )
+        , None )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_required = required
+      ; question_type = "select"
+      ; question_options = Some options
+      ; answer_uuid = Some _
+      ; answer_text = Some text
+      ; _
+      } ->
+      Ok
+        ( Model.Question.Select
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , Str.split (Str.regexp_string ",") options
+            , int_to_bool required )
+        , Some (Model.AnswerInput.Text text) )
+    | { question_uuid
+      ; question_label
+      ; question_help_text
+      ; question_text
+      ; question_required = required
+      ; question_type = "select"
+      ; question_options = Some options
+      ; answer_uuid = None
+      ; _
+      } ->
+      Ok
+        ( Model.Question.Select
+            ( question_uuid
+            , question_label
+            , question_help_text
+            , question_text
+            , Str.split (Str.regexp_string ",") options
+            , int_to_bool required )
+        , None )
+    | { question_type = type_; question_uuid = id; _ } ->
+      let msg =
+        Caml.Format.asprintf
+          "Invalid question type encountered %s for question with id %s"
+          type_
+          id
+      in
+      Logs.err (fun m -> m "%s" msg);
+      Error msg
   ;;
+
+  let to_question_answer_input rows = rows |> CCResult.map_l row_to_question_answer_input
 
   let t =
     let encode m =

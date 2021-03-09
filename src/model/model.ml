@@ -1,21 +1,6 @@
-module Conformist = Conformist
-
-let rec find_index (index : int) ~(predicate : 'a -> bool) (list : 'a list) : int option =
-  match list with
-  | [] -> None
-  | x :: xs -> if predicate x then Some index else find_index (index + 1) ~predicate xs
-;;
-
-let update_at ~(index : int) ~(f : 'a -> 'a) (list : 'a list) : 'a list =
-  if index < 0
-  then list
-  else (
-    let head = Base.List.take list index in
-    let tail = Base.List.drop list index in
-    match tail with
-    | x :: xs -> head @ f x :: xs
-    | _ -> list)
-;;
+module List = CCList
+module Option = CCOpt
+module String = CCString
 
 module AnswerInput = struct
   type uuid = string option [@@deriving yojson, show, eq]
@@ -153,10 +138,6 @@ module Question = struct
     | Year (a, b, c, d, _) -> Year (a, b, c, d, false)
   ;;
 
-  (* let question_shema question = let open Conformist in match question with | Text (id,
-     label, text, default, regex, required) -> make Field.[ string "id"; string "label";
-     string "text" ] { id; label; text; default; regex; required } | Country () ;; *)
-
   let validation_error uuid message = Error (Caml.Format.asprintf "%s,%s" uuid message)
 
   let validate question answer_input =
@@ -167,13 +148,21 @@ module Question = struct
       | false -> Ok ())
     | Text (_, _, _, _, _, regex, _), Some (AnswerInput.Text answer) ->
       let regex = Sihl.Utils.Regex.of_string regex in
-      (match Base.String.is_empty answer, Sihl.Utils.Regex.test regex answer with
+      (match Sihl.Utils.Regex.test regex answer with
+      | true -> Ok ()
+      | false -> validation_error (uuid question) "Invalid value provided")
+    | Country (_, _, _, _, _), Some (AnswerInput.Text answer) ->
+      (match
+         ( String.is_empty answer
+         , List.exists
+             (fun (country, _) -> String.equal country answer)
+             Model_utils.countries )
+       with
       | true, _ -> Ok ()
       | false, true -> Ok ()
       | false, false -> validation_error (uuid question) "Invalid value provided")
-    | Country (_, _, _, _, _), Some (AnswerInput.Text _) -> Ok ()
     | Select (_, _, _, _, options, _), Some (AnswerInput.Text answer) ->
-      (match Base.List.find options ~f:(String.equal answer) |> Base.Option.is_some with
+      (match options |> List.find_opt (String.equal answer) |> Option.is_some with
       | true -> Ok ()
       | false -> validation_error (uuid question) "Please select on of the options")
     | YesNo (_, _, _, _, _), Some (AnswerInput.Text answer) ->
@@ -187,6 +176,7 @@ module Question = struct
       | true -> Ok ()
       | false -> validation_error (uuid question) "Please enter a year in the format 1999")
     | Date (_, _, _, _, _), Some (AnswerInput.Text answer) ->
+      (* TODO: define allowed type of date, e.g. swiss format *)
       let regex =
         Sihl.Utils.Regex.of_string "^(1|2)\\d\\d\\d\\-(0|1)\\d\\-(0|1|2|3)\\d$"
       in
@@ -197,44 +187,43 @@ module Question = struct
     | ( File (_, _, _, _, supported_mime_types, max_file_sizeMb, _)
       , Some (Asset (_, _, size_byte, mime_type, _)) ) ->
       let size_mb =
-        Base.Float.of_int size_byte *. (10. ** -6.)
-        |> Base.Float.round_up
-        |> Base.Int.of_float
+        CCFloat.of_int size_byte *. (10. ** -6.) |> CCFloat.round |> CCInt.of_float
       in
-      (match size_mb <= max_file_sizeMb && List.mem mime_type supported_mime_types with
-      | true -> Ok ()
-      | false -> validation_error (uuid question) "Invalid value provided")
+      (match size_mb <= max_file_sizeMb, List.mem mime_type supported_mime_types with
+      | true, true -> Ok ()
+      | _, true ->
+        validation_error
+          (uuid question)
+          (Caml.Format.asprintf "Asset file size too big (max. %d)" size_mb)
+      | _, false -> validation_error (uuid question) "Invalid value provided")
     | question, _ -> validation_error (uuid question) "Invalid value provided"
   ;;
 
   let is_valid question answer_input =
-    let validation = validate question answer_input in
+    let validation = validate question (Some answer_input) in
     match validation with
     | Ok _ -> true
     | Error _ -> false
   ;;
 end
 
-module QuestionAnswerInput = struct
+module QuestionAnswer = struct
   type t = Question.t * AnswerInput.t option [@@deriving yojson, show, eq]
 
   let are_all_required_questions_answered question_input =
     question_input
-    |> List.map (fun (question, answer) ->
+    |> List.for_all (fun (question, answer) ->
            match Question.is_required question, answer with
-           | true, Some _ -> true
            | true, None -> false
-           | false, _ -> true)
-    |> List.for_all (fun x -> x)
+           | _, _ -> true)
   ;;
 
   let are_all_answered_questions_valid question_input =
     question_input
-    |> List.map (fun ((question : Question.t), answer) ->
+    |> List.for_all (fun ((question : Question.t), answer) ->
            match answer with
            | Some answer -> Question.is_valid question answer
            | None -> true)
-    |> List.for_all (fun x -> x)
   ;;
 
   let can_questions_answered_get_submitted question_input =
@@ -251,13 +240,23 @@ module QuestionAnswerInput = struct
       question_answers
   ;;
 
-  let update question_answers question answer =
-    question_answers
-    |> find_index 0 ~predicate:(fun (existing_question, _) ->
-           Question.uuid existing_question == Question.uuid question)
-    |> Option.map (fun index ->
-           update_at ~index ~f:(fun (question, _) -> question, answer) question_answers)
-    |> Option.value ~default:question_answers
+  let update
+      (question_answers : (Question.t * AnswerInput.t) list)
+      (question : Question.t)
+      (answer : AnswerInput.t)
+    =
+    let found_index =
+      question_answers
+      |> List.find_idx (fun (existing_question, _) ->
+             Question.uuid existing_question == Question.uuid question)
+    in
+    match found_index with
+    | None -> question_answers
+    | Some (index_to_update, (question_to_answer, _)) ->
+      List.mapi
+        (fun index old_answer ->
+          if index = index_to_update then question_to_answer, answer else old_answer)
+        question_answers
   ;;
 
   let event questionnaire_id current updated =
@@ -285,14 +284,14 @@ module Questionnaire = struct
     ; template_uuid : string
     ; label : string
     ; description : string
-    ; questions : QuestionAnswerInput.t list
+    ; questions : QuestionAnswer.t list
     }
   [@@deriving yojson, show, fields, make, eq]
 
   let set_questions questions questionnaire = { questionnaire with questions }
 
   let is_ready_for_submission questionnaire =
-    questionnaire.questions |> QuestionAnswerInput.are_all_required_questions_answered
+    questionnaire.questions |> QuestionAnswer.are_all_required_questions_answered
   ;;
 
   let set_question_to_optional (question, answer) = Question.set_optional question, answer
@@ -310,20 +309,20 @@ module Questionnaire = struct
     { questionnaire with questions }
   ;;
 
-  let answer questionnaire answers =
-    let open Base in
+  let answer (questionnaire : t) (answers : QuestionAnswer.t list) =
     let rec loop questions errors events =
       match questions with
       | ((question, _) as current) :: questions ->
-        let answer =
-          List.find answers ~f:(fun (answer_question, _) ->
-              Question.equal answer_question question)
+        let question_answer =
+          List.find
+            (fun (answer_question, _) -> Question.equal answer_question question)
+            answers
         in
-        let answer_input = answer |> Option.bind ~f:(fun (_, answer) -> answer) in
-        (match Question.validate question answer_input, answer with
+        let _, answer_input = question_answer in
+        (match Question.validate question answer_input, answer_input with
         | Error msg, _ -> loop questions (List.cons msg errors) events
-        | Ok (), Some answer ->
-          (match QuestionAnswerInput.event questionnaire.uuid current answer with
+        | Ok (), Some _ ->
+          (match QuestionAnswer.event questionnaire.uuid current question_answer with
           | Some event -> loop questions errors (List.cons event events)
           | None -> loop questions errors events)
         | Ok (), None -> loop questions errors events)
@@ -333,164 +332,17 @@ module Questionnaire = struct
       match answers with
       | [ (question, _) ] when Question.is_file question ->
         let questions =
-          List.find questionnaire.questions ~f:(fun (questionnaire_question, _) ->
-              Question.equal questionnaire_question question)
-          |> Option.map ~f:(fun q -> [ q ])
-          |> Option.value ~default:[]
+          questionnaire.questions
+          |> List.find_all (fun (questionnaire_question, _) ->
+                 Question.equal questionnaire_question question)
         in
         loop questions [] []
       | _ ->
-        let questions = QuestionAnswerInput.filter_asset_out questionnaire.questions in
+        let questions = QuestionAnswer.filter_asset_out questionnaire.questions in
         loop questions [] []
     in
-    match Base.List.is_empty errors with
+    match List.is_empty errors with
     | true -> Ok events
     | false -> Error errors
-  ;;
-end
-
-module AttributeTemplate = struct
-  let personal_details = "314afbde-caf6-4164-b86d-6b09ebefdb40"
-  let qualified = "f446853b-e341-4e1d-afc9-a86d38f44f42"
-  let sample = "3b6a6800-148b-4424-8b18-3ac198b349f6"
-  let general = "365f7dbf-1356-4d82-9dba-8735c2c2e5ec"
-end
-
-module Attribute = struct
-  type t =
-    { uuid : string
-    ; number : string
-    ; attribute_user : string
-    ; personal_details : string
-    ; qualified : string
-    ; sample : string
-    ; general : string
-    ; note : string
-    ; created : Ptime.t
-    ; updated : Ptime.t
-    }
-  [@@deriving show, eq, make, fields]
-
-  let create
-      ~id
-      ~attribute_user
-      ~personal_details
-      ~qualified
-      ~sample
-      ~general
-      ?created
-      ?updated
-      ()
-    =
-    { uuid = id
-    ; number = ""
-    ; attribute_user
-    ; personal_details
-    ; qualified
-    ; sample
-    ; general
-    ; note = ""
-    ; created = Option.value ~default:(Ptime_clock.now ()) created
-    ; updated = Option.value ~default:(Ptime_clock.now ()) updated
-    }
-  ;;
-
-  let t =
-    let encode m =
-      Ok
-        ( m.uuid
-        , ( m.number
-          , ( m.attribute_user
-            , ( m.personal_details
-              , (m.qualified, (m.sample, (m.general, (m.note, (m.created, m.updated)))))
-              ) ) ) )
-    in
-    let decode
-        ( uuid
-        , ( number
-          , ( attribute_user
-            , ( personal_details
-              , (qualified, (sample, (general, (note, (created, updated))))) ) ) ) )
-      =
-      Ok
-        { uuid
-        ; number
-        ; attribute_user
-        ; personal_details
-        ; qualified
-        ; sample
-        ; general
-        ; note
-        ; created
-        ; updated
-        }
-    in
-    let open Caqti_type in
-    custom
-      ~encode
-      ~decode
-      (tup2
-         string
-         (tup2
-            string
-            (tup2
-               string
-               (tup2
-                  string
-                  (tup2
-                     string
-                     (tup2 string (tup2 string (tup2 string (tup2 ptime ptime)))))))))
-  ;;
-
-  let has_questionnaire user_attribute questionnaire_id =
-    String.equal user_attribute.personal_details questionnaire_id
-    || String.equal user_attribute.qualified questionnaire_id
-    || String.equal user_attribute.sample questionnaire_id
-    || String.equal user_attribute.general questionnaire_id
-  ;;
-
-  let fail_if_doesnt_have_questionnaire user_attribute questionnaire_id =
-    match has_questionnaire user_attribute questionnaire_id with
-    | true -> Ok ()
-    | false -> Error "Questionnaire doesn't belong to the attribute"
-  ;;
-
-  let set_note note attribute = { attribute with note }
-end
-
-module FullAttribute = struct
-  type t =
-    { uuid : string
-    ; number : string
-    ; attribute_user : Sihl.User.t
-    ; personal_details : Questionnaire.t
-    ; qualified : Questionnaire.t
-    ; sample : Questionnaire.t
-    ; general : Questionnaire.t
-    ; note : string
-    ; created : Ptime.t
-    ; updated : Ptime.t
-    }
-  [@@deriving show, eq, fields]
-
-  let create
-      ~(attribute : Attribute.t)
-      ~personal_details
-      ~qualified
-      ~sample
-      ~general
-      ~attribute_user
-    =
-    { uuid = Attribute.uuid attribute
-    ; number = Attribute.number attribute
-    ; attribute_user
-    ; personal_details
-    ; qualified
-    ; sample
-    ; general
-    ; note = Attribute.note attribute
-    ; created = attribute.created
-    ; updated = attribute.updated
-    }
   ;;
 end
