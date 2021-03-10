@@ -33,6 +33,7 @@ module type Sig = sig
   end
 
   module Internal__ : sig
+    (* USE ON YOUR OWN RISK -- Internal__ functions are used for testing *)
     val clean : unit -> unit Lwt.t
 
     module Model : sig
@@ -200,7 +201,7 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
   end
 
   module Internal__ = struct
-    (* USE ON YOUR OWN RISK -- Internal functions are used for testing *)
+    (* USE ON YOUR OWN RISK -- Internal__ functions are used for testing *)
     let clean () = Repo.clean ()
 
     module Model = struct

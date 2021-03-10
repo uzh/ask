@@ -1,7 +1,5 @@
 open Lwt.Syntax
 module Database = Sihl.Service.Database
-module Option = CCOpt
-module Result = CCResult
 module RepoSql = Repository_sql
 module RepoModel = Repository_model
 
@@ -112,7 +110,7 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
           let* question_rows = Sql.QuestionnaireRow.find_questions connection id in
           let questionnaire =
             questionnaire
-            |> Option.map (fun questionnaire ->
+            |> CCOpt.map (fun questionnaire ->
                    RepoModel.QuestionnaireRow.to_questionnaire questionnaire question_rows)
           in
           Lwt.return questionnaire)
@@ -149,12 +147,12 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
           let* answer =
             find_answer ~questionnaire_id ~question_id
             |> Lwt.map
-                 (Option.to_result
+                 (CCOpt.to_result
                     (Caml.Format.asprintf
                        "Answer with questionnaire_id %s and question_id %s"
                        questionnaire_id
                        question_id))
-            |> Lwt.map Result.get_or_failwith
+            |> Lwt.map CCResult.get_or_failwith
           in
           let answer_id = RepoModel.AnswerRow.uuid answer in
           Sql.AnswerRow.update connection (text, asset_id, answer_id))
@@ -173,12 +171,12 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
           let* answer =
             find_answer ~questionnaire_id ~question_id
             |> Lwt.map
-                 (Option.to_result
+                 (CCOpt.to_result
                     (Caml.Format.asprintf
                        "Answer with questionnaire_id %s and question_id %s"
                        questionnaire_id
                        question_id))
-            |> Lwt.map Result.get_or_failwith
+            |> Lwt.map CCResult.get_or_failwith
           in
           let answer_id = RepoModel.AnswerRow.uuid answer in
           Sql.AnswerRow.delete connection answer_id)
@@ -186,7 +184,7 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
 
     let find_asset_id ~questionnaire_id ~question_id =
       let* answer = find_answer ~questionnaire_id ~question_id in
-      let asset_id = Option.bind answer RepoModel.AnswerRow.asset in
+      let asset_id = CCOpt.bind answer RepoModel.AnswerRow.asset in
       Lwt.return asset_id
     ;;
 

@@ -20,7 +20,7 @@ services:
   database:
     image: mariadb:10.3
     command: --max_allowed_packet=629145600
-    ports: [3306:3306]
+    ports: [3310:3306]
     environment:
       - TZ=Europe/Zurich
       - MYSQL_ALLOW_EMPTY_PASSWORD='yes'
