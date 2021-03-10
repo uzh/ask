@@ -30,12 +30,9 @@
    (>= 4.11))
   (lwt
    (>= 5.3.0))
-  ;; Standard library replacement
-  (base
-   (>= v0.13.1))
   ;; Sihl
   (sihl
-   (= 0.2.2))
+   (= 0.3.0~rc2))
   (conformist
    (= 1.0.0))
   ;; Database

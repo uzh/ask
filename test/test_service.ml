@@ -151,7 +151,7 @@ struct
       "application/pdf"
       mime;
     let* file = StorageService.find ~id:file_id in
-    let* file_content = StorageService.download_data_base64 ~file in
+    let* file_content = StorageService.download_data_base64 file in
     (let open Alcotest in
     check string)
       "has answered file content"
@@ -238,7 +238,7 @@ struct
       "application/pdf"
       mime;
     let* file = StorageService.find ~id:file_id in
-    let* file_content = StorageService.download_data_base64 ~file in
+    let* file_content = StorageService.download_data_base64 file in
     (let open Alcotest in
     check string)
       "has answered file content"

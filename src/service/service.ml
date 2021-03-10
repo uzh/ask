@@ -97,8 +97,10 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
       | Model.Event.AssetAnswerCreated
           (questionnaire_id, question_id, (_, filename, size, mime, data)) ->
         let asset_id = Uuidm.create `V4 |> Uuidm.to_string in
-        let file = Sihl.Storage.File.make ~id:asset_id ~filename ~filesize:size ~mime in
-        let* _ = Storage.upload_base64 ~file ~base64:data in
+        let file =
+          Sihl.Contract.Storage.{ id = asset_id; filename; filesize = size; mime }
+        in
+        let* _ = Storage.upload_base64 file ~base64:data in
         Repo.Questionnaire.create_asset_answer
           ~answer_id:(Uuidm.create `V4 |> Uuidm.to_string)
           ~questionnaire_id
@@ -120,13 +122,13 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
         in
         let* file = Storage.find ~id:asset_id in
         let updated_file =
-          let open Sihl.Storage in
+          let open Sihl.Contract.Storage in
           file
-          |> Stored.set_filename filename
-          |> Stored.set_filesize size
-          |> Stored.set_mime mime
+          |> set_filename_stored filename
+          |> set_filesize_stored size
+          |> set_mime_stored mime
         in
-        let* _ = Storage.update_base64 ~file:updated_file ~base64:data in
+        let* _ = Storage.update_base64 updated_file ~base64:data in
         Repo.Questionnaire.update_asset_answer ~questionnaire_id ~question_id ~asset_id
       | Model.Event.AssetAnswerDelete (questionnaire_id, question_id) ->
         let* asset_id =
@@ -181,7 +183,7 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
     let add_question ~template_id ~order question =
       let question_id = Model.Question.uuid question in
       let mapping_id = Uuidm.create `V4 |> Uuidm.to_string in
-      Sihl.Service.Database.transaction (fun connection ->
+      Sihl.Database.transaction (fun connection ->
           let* () = Repo.Questionnaire.create_question ~connection ~question in
           let* () =
             Repo.Questionnaire.create_mapping
@@ -214,7 +216,11 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
   let stop _ = Lwt.return ()
 
   let lifecycle =
-    Sihl.Container.Lifecycle.create "quest" ~dependencies:Repo.lifecycles ~start ~stop
+    Sihl.Container.create_lifecycle
+      "quest"
+      ~dependencies:(fun () -> Repo.lifecycles)
+      ~start
+      ~stop
   ;;
 
   let register () =
@@ -224,8 +230,5 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
   ;;
 end
 
-module MigrationRepo = Sihl.Service.Migration_repo.MariaDb
-module MigrationService = Sihl.Service.Migration.Make (MigrationRepo)
-module StorageRepo = Sihl.Service.Storage_repo.MakeMariaDb (MigrationService)
-module Storage = Sihl.Service.Storage.Make (StorageRepo)
-module MariaDb = Make (Repository.MariaDB (MigrationService)) (Storage)
+module MariaDb =
+  Make (Repository.MariaDB (Sihl.Database.Migration.MariaDb)) (Sihl_storage.MariaDb)

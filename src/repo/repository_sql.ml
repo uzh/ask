@@ -1,5 +1,4 @@
 open Lwt.Syntax
-module Database = Sihl.Service.Database
 module Utils = Repository_utils
 
 module MariaDB () = struct
@@ -9,7 +8,7 @@ module MariaDB () = struct
     ;;
 
     let with_disabled_fk_check f =
-      Database.query (fun connection ->
+      Sihl.Database.query (fun connection ->
           let module Connection = (val connection : Caqti_lwt.CONNECTION) in
           let* () =
             Connection.exec set_fk_check_request false |> Lwt.map Utils.raise_caqti_error
@@ -284,7 +283,7 @@ module MariaDB () = struct
           |> add Caqti_type.string questionnaire_id
           |> add Caqti_type.string template_question_mapping_id
         in
-        Database.query (fun connection ->
+        Sihl.Database.query (fun connection ->
             DbUtils.is_unique connection table_name ~sql_filter ~values ?uuid ())
       ;;
 

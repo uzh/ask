@@ -1,7 +1,7 @@
 (library
  (name quest)
  (public_name quest)
- (libraries base sihl)
+ (libraries base sihl sihl-storage)
  (preprocess
   (pps
    ppx_fields_conv

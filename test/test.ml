@@ -1,21 +1,13 @@
 open Alcotest_lwt
 open Lwt.Syntax
 
-(* Kernal services *)
-module MigrationRepo = Sihl.Service.Migration_repo.MariaDb
-module Migration = Sihl.Service.Migration.Make (MigrationRepo)
-
-(* Repositories *)
-module StorageRepo = Sihl.Service.Storage_repo.MakeMariaDb (Migration)
-
-(* Services *)
-module Repository = Sihl.Service.Repository
-module Database = Sihl.Service.Database
-module Storage = Sihl.Service.Storage.Make (StorageRepo)
-module QuestService = Quest.MariaDb
+(* services *)
+module Migration = Sihl.Database.Migration.MariaDb
+module Storage = Sihl_storage.MariaDb
+module Database = Sihl.Database
 
 (* Test service *)
-module TestService = Test_service.Make (QuestService) (Storage)
+module TestService = Test_service.Make (Quest.MariaDb) (Storage)
 
 let suite =
   [ ( "questionnaire model"
@@ -99,14 +91,6 @@ let () =
   let () = Test_utils.setup_test () in
   Lwt_main.run
     (let* _ = Sihl.Container.start_services services in
-     Sihl.App.(
-       empty
-       |> before_start (fun () -> Lwt.return (Test_utils.set_database_url ()))
-       |> with_services services
-       |> before_start (fun () ->
-              Printexc.record_backtrace true;
-              Lwt.return (Test_utils.set_database_url ()))
-       |> run);
      let* _ = Migration.run_all () in
      Alcotest_lwt.run "questionnaire component" @@ suite)
 ;;

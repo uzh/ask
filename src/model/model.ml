@@ -143,8 +143,8 @@ module Question = struct
       | true -> validation_error (uuid question) "Required"
       | false -> Ok ())
     | Text (_, _, _, _, _, regex, required), Some (AnswerInput.Text answer) ->
-      let regex = Sihl.Utils.Regex.of_string regex in
-      (match CCString.is_empty answer, Sihl.Utils.Regex.test regex answer with
+      let regex = Re.Pcre.regexp regex in
+      (match CCString.is_empty answer, Re.Pcre.pmatch ~rex:regex answer with
       | false, true -> Ok ()
       | true, _ when required -> validation_error (uuid question) "Required"
       | true, true -> Ok ()
@@ -164,21 +164,19 @@ module Question = struct
       | true -> Ok ()
       | false -> validation_error (uuid question) "Please select on of the options")
     | YesNo (_, _, _, _, _), Some (AnswerInput.Text answer) ->
-      let regex = Sihl.Utils.Regex.of_string "^Yes$|^No$" in
-      (match Sihl.Utils.Regex.test regex answer with
+      let regex = Re.Pcre.regexp "^Yes$|^No$" in
+      (match Re.Pcre.pmatch ~rex:regex answer with
       | true -> Ok ()
       | false -> validation_error (uuid question) "Please answer with 'Yes' or 'No'")
     | Year (_, _, _, _, _), Some (AnswerInput.Text answer) ->
-      let regex = Sihl.Utils.Regex.of_string "^(1|2)\\d\\d\\d$" in
-      (match Sihl.Utils.Regex.test regex answer with
+      let regex = Re.Pcre.regexp "^(1|2)\\d\\d\\d$" in
+      (match Re.Pcre.pmatch ~rex:regex answer with
       | true -> Ok ()
       | false -> validation_error (uuid question) "Please enter a year in the format 1999")
     | Date (_, _, _, _, _), Some (AnswerInput.Text answer) ->
       (* TODO: define allowed type of date, e.g. swiss format *)
-      let regex =
-        Sihl.Utils.Regex.of_string "^(1|2)\\d\\d\\d\\-(0|1)\\d\\-(0|1|2|3)\\d$"
-      in
-      (match Sihl.Utils.Regex.test regex answer with
+      let regex = Re.Pcre.regexp "^(1|2)\\d\\d\\d\\-(0|1)\\d\\-(0|1|2|3)\\d$" in
+      (match Re.Pcre.pmatch ~rex:regex answer with
       | true -> Ok ()
       | false ->
         validation_error (uuid question) "Please enter a date in the format 1990-11-25")

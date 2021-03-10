@@ -1,10 +1,10 @@
 open Lwt.Syntax
-module Database = Sihl.Service.Database
+module Database = Sihl.Database
 module RepoSql = Repository_sql
 module RepoModel = Repository_model
 
 module type Sig = sig
-  val lifecycles : Sihl.Container.Lifecycle.t list
+  val lifecycles : Sihl.Container.lifecycle list
   val register_migration : unit -> unit
   val register_cleaner : unit -> unit
   val clean : unit -> unit Lwt.t
@@ -101,7 +101,7 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
   let lifecycles = [ Database.lifecycle; MigrationService.lifecycle ]
   let register_migration () = MigrationService.register_migration (Migration.migration ())
   let clean = Sql.clean
-  let register_cleaner () = Sihl.Service.Repository.register_cleaner clean
+  let register_cleaner () = Sihl.Cleaner.register_cleaner clean
 
   module Questionnaire = struct
     let find id =

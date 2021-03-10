@@ -1,3 +1,10 @@
 (test
  (name test)
- (libraries base caqti-driver-mariadb sihl quest alcotest alcotest-lwt))
+ (libraries
+  base
+  caqti-driver-mariadb
+  sihl
+  sihl-storage
+  quest
+  alcotest
+  alcotest-lwt))

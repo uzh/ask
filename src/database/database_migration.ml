@@ -1,6 +1,6 @@
 module MariaDB = struct
   let questions =
-    Sihl.Migration.create_step
+    Sihl.Database.Migration.create_step
       ~label:"questions"
       {sql|
         CREATE TABLE IF NOT EXISTS `quest_questions` (
@@ -24,7 +24,7 @@ module MariaDB = struct
   ;;
 
   let templates =
-    Sihl.Migration.create_step
+    Sihl.Database.Migration.create_step
       ~label:"templates"
       {sql|
         CREATE TABLE IF NOT EXISTS `quest_templates` (
@@ -42,7 +42,7 @@ module MariaDB = struct
   ;;
 
   let questionnaires =
-    Sihl.Migration.create_step
+    Sihl.Database.Migration.create_step
       ~label:"questionnaires"
       {sql|
         CREATE TABLE IF NOT EXISTS `quest_questionnaires` (
@@ -60,7 +60,7 @@ module MariaDB = struct
   ;;
 
   let mappings =
-    Sihl.Migration.create_step
+    Sihl.Database.Migration.create_step
       ~label:"mappings"
       {sql|
         CREATE TABLE IF NOT EXISTS `quest_template_question_mappings` (
@@ -83,7 +83,7 @@ module MariaDB = struct
   ;;
 
   let answers =
-    Sihl.Migration.create_step
+    Sihl.Database.Migration.create_step
       ~label:"answers"
       ~check_fk:false
       {sql|
@@ -108,7 +108,7 @@ module MariaDB = struct
   ;;
 
   let migration () =
-    let open Sihl.Migration in
+    let open Sihl.Database.Migration in
     empty "attributes"
     |> add_step questions
     |> add_step templates
