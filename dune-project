@@ -4,7 +4,7 @@
 
 (name quest)
 
-(version 0.0.0)
+(version 0.1.0)
 
 (authors "Marc Biedermann")
 
@@ -12,11 +12,11 @@
 
 (maintainers "marc.biedermann@econ.uzh.ch")
 
-(homepage "tbd")
+(homepage "https://gitlab.uzh.ch/econ/research/tools/quest")
 
-(bug_reports "tbd/-/issues")
+(bug_reports "https://gitlab.uzh.ch/econ/research/tools/quest/-/issues")
 
-(documentation "tbd")
+(documentation "https://gitlab.uzh.ch/econ/research/tools/quest")
 
 (package
  (name quest)
@@ -34,7 +34,7 @@
   (sihl
    (= 0.3.0~rc2))
   (conformist
-   (= 1.0.0))
+   (= 0.2.0))
   ;; Database
   (caqti-driver-mariadb
    (>= 1.2.1))
