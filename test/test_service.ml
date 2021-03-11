@@ -7,6 +7,9 @@ struct
   module Seed = TestSeed.Make (QuestService)
   module Questionnaire = QuestService.Questionnaire
 
+  let lifecycle = QuestService.lifecycle
+  let register = QuestService.register
+
   let alco_question_answer_input =
     Alcotest.testable Model.QuestionAnswer.pp Model.QuestionAnswer.equal
   ;;
@@ -278,5 +281,8 @@ struct
     Lwt.return ()
   ;;
 
-  let clean_all _ () = QuestService.Internal__.clean ()
+  let clean_all _ () =
+    let* _ = Sihl.Cleaner.clean_all () in
+    QuestService.Internal__.clean ()
+  ;;
 end

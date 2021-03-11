@@ -85,7 +85,13 @@ let suite =
   ]
 ;;
 
-let services = [ Database.register (); Migration.register (); Storage.register () ]
+let services =
+  [ TestService.register ()
+  ; Database.register ()
+  ; Migration.register ()
+  ; Storage.register ()
+  ]
+;;
 
 let () =
   let () = Test_utils.setup_test () in
