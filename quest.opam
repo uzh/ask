@@ -14,6 +14,7 @@ depends: [
   "ocaml" {>= "4.11"}
   "lwt" {>= "5.3.0"}
   "sihl" {= "0.3.0~rc2"}
+  "sihl-storage" {= "0.3.0~rc2"}
   "conformist" {= "0.2.0"}
   "caqti-driver-mariadb" {>= "1.2.1"}
   "ppx_fields_conv" {>= "0.13.0"}

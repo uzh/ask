@@ -33,6 +33,8 @@
   ;; Sihl
   (sihl
    (= 0.3.0~rc2))
+  (sihl-storage
+   (= 0.3.0~rc2))
   (conformist
    (= 0.2.0))
   ;; Database
