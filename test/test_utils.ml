@@ -28,27 +28,10 @@ let lwt_check_raises f msg =
     Alcotest.fail @@ "Unexpected exception thrown " ^ err_msg
 ;;
 
-(* TODO use set_database_url from run *)
-let set_database_url () =
-  let () =
-    if Sys.getenv_opt "DATABASE_URL" == None
-    then (
-      match
-        ( Sys.getenv_opt "SIHL_ENV"
-        , Sys.getenv_opt "DEVELOPMENT_DATABASE_URL"
-        , Sys.getenv_opt "TEST_DATABASE_URL" )
-      with
-      | Some "test", _, Some database_url -> Unix.putenv "DATABASE_URL" database_url
-      | Some "development", Some database_url, _ ->
-        Unix.putenv "DATABASE_URL" database_url
-      | _, _, _ -> Unix.putenv "DATABASE_URL" "mariadb://root:password@127.0.0.1:3306/dev")
-  in
-  ()
-;;
-
 let setup_test () =
-  Logs.set_level (Some Logs.Error);
-  Logs.set_reporter Sihl.Log.default_reporter;
-  let () = set_database_url () in
+  let file_configuration = Sihl.Configuration.read_env_file () in
+  let () = Sihl.Configuration.store @@ Option.value file_configuration ~default:[] in
+  let () = Logs.set_level (Some Logs.Error) in
+  let () = Logs.set_reporter Sihl.Log.default_reporter in
   ()
 ;;

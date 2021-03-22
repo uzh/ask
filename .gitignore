@@ -4,3 +4,4 @@
 .merlin
 .devcontainer/data/
 .env
+.env.test
