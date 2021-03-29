@@ -1,6 +1,6 @@
 open Lwt.Syntax
 
-let name = "quest"
+let name = "ask"
 let log_src = Logs.Src.create name
 
 module Logs = (val Logs.src_log log_src : Logs.LOG)
@@ -217,7 +217,7 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
 
   let lifecycle =
     Sihl.Container.create_lifecycle
-      "quest"
+      "ask"
       ~dependencies:(fun () -> Repo.lifecycles)
       ~start
       ~stop

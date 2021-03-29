@@ -107,7 +107,7 @@ module MariaDB () = struct
               max_file_size_mb,
               mime_types,
               possible_options
-            FROM quest_questions
+            FROM ask_questions
             WHERE uuid = UNHEX(REPLACE(?, '-', ''))
           |sql}
       ;;
@@ -126,7 +126,7 @@ module MariaDB () = struct
         Caqti_request.exec
           Model.QuestionRow.t
           {sql|
-            INSERT INTO quest_questions (
+            INSERT INTO ask_questions (
               uuid,
               label,
               help_text,
@@ -159,7 +159,7 @@ module MariaDB () = struct
       ;;
 
       let clean_request =
-        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_questions;"
+        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE ask_questions;"
       ;;
 
       let clean connection =
@@ -184,7 +184,7 @@ module MariaDB () = struct
               )),
               text,
               storage_handle
-            FROM quest_answers
+            FROM ask_answers
             WHERE uuid = UNHEX(REPLACE(?, '-', ''))
           |sql}
       ;;
@@ -210,21 +210,21 @@ module MariaDB () = struct
         Caqti_request.exec
           insert_type
           {sql|
-          INSERT INTO quest_answers (
+          INSERT INTO ask_answers (
             uuid,
-            quest_questionnaire,
-            quest_template_question_mapping,
+            ask_questionnaire,
+            ask_template_question_mapping,
             text,
             storage_handle
           ) VALUES (
             UNHEX(REPLACE(?, '-', '')),
-            (SELECT id FROM quest_questionnaires WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))),
-            (SELECT id FROM quest_template_question_mappings
-              WHERE quest_template_question_mappings.quest_template =
-                (SELECT quest_template FROM quest_questionnaires
-                  WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', '')))
-              AND quest_template_question_mappings.quest_question =
-                (SELECT id FROM quest_questions WHERE quest_questions.uuid = UNHEX(REPLACE(?, '-', '')))),
+            (SELECT id FROM ask_questionnaires WHERE ask_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))),
+            (SELECT id FROM ask_template_question_mappings
+              WHERE ask_template_question_mappings.ask_template =
+                (SELECT ask_template FROM ask_questionnaires
+                  WHERE ask_questionnaires.uuid = UNHEX(REPLACE(?, '-', '')))
+              AND ask_template_question_mappings.ask_question =
+                (SELECT id FROM ask_questions WHERE ask_questions.uuid = UNHEX(REPLACE(?, '-', '')))),
             ?,
             UNHEX(REPLACE(?, '-', ''))
           );
@@ -241,12 +241,12 @@ module MariaDB () = struct
           (let open Caqti_type in
           tup3 (option string) (option string) string)
           {sql|
-          UPDATE quest_answers
+          UPDATE ask_answers
           SET
             text = ?,
             storage_handle = UNHEX(REPLACE(?, '-', ''))
           WHERE
-          quest_answers.uuid = UNHEX(REPLACE(?, '-', ''));
+          ask_answers.uuid = UNHEX(REPLACE(?, '-', ''));
         |sql}
       ;;
 
@@ -259,8 +259,8 @@ module MariaDB () = struct
         Caqti_request.exec
           Caqti_type.string
           {sql|
-          DELETE FROM quest_answers WHERE
-          quest_answers.uuid = UNHEX(REPLACE(?, '-', ''));
+          DELETE FROM ask_answers WHERE
+          ask_answers.uuid = UNHEX(REPLACE(?, '-', ''));
         |sql}
       ;;
 
@@ -270,11 +270,11 @@ module MariaDB () = struct
       ;;
 
       let is_unique ~questionnaire_id ~template_question_mapping_id ?uuid () =
-        let table_name = "quest_answers" in
+        let table_name = "ask_answers" in
         let sql_filter =
           {sql|
-            quest_questionnaire = (SELECT id FROM quest_questionnaires WHERE uuid = UNHEX(REPLACE(?, '-', '')) ) AND
-            quest_template_question_mapping = (SELECT id FROM quest_template_question_mappings WHERE uuid = UNHEX(REPLACE(?, '-', '')) )
+            ask_questionnaire = (SELECT id FROM ask_questionnaires WHERE uuid = UNHEX(REPLACE(?, '-', '')) ) AND
+            ask_template_question_mapping = (SELECT id FROM ask_template_question_mappings WHERE uuid = UNHEX(REPLACE(?, '-', '')) )
           |sql}
         in
         let values =
@@ -287,9 +287,7 @@ module MariaDB () = struct
             DbUtils.is_unique connection table_name ~sql_filter ~values ?uuid ())
       ;;
 
-      let clean_request =
-        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_answers;"
-      ;;
+      let clean_request = Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE ask_answers;"
 
       let clean connection =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
@@ -305,24 +303,24 @@ module MariaDB () = struct
           {sql|
             SELECT
               LOWER(CONCAT(
-                SUBSTR(HEX(quest_questionnaires.uuid), 1, 8), '-',
-                SUBSTR(HEX(quest_questionnaires.uuid), 9, 4), '-',
-                SUBSTR(HEX(quest_questionnaires.uuid), 13, 4), '-',
-                SUBSTR(HEX(quest_questionnaires.uuid), 17, 4), '-',
-                SUBSTR(HEX(quest_questionnaires.uuid), 21)
+                SUBSTR(HEX(ask_questionnaires.uuid), 1, 8), '-',
+                SUBSTR(HEX(ask_questionnaires.uuid), 9, 4), '-',
+                SUBSTR(HEX(ask_questionnaires.uuid), 13, 4), '-',
+                SUBSTR(HEX(ask_questionnaires.uuid), 17, 4), '-',
+                SUBSTR(HEX(ask_questionnaires.uuid), 21)
               )),
               LOWER(CONCAT(
-                SUBSTR(HEX(quest_templates.uuid), 1, 8), '-',
-                SUBSTR(HEX(quest_templates.uuid), 9, 4), '-',
-                SUBSTR(HEX(quest_templates.uuid), 13, 4), '-',
-                SUBSTR(HEX(quest_templates.uuid), 17, 4), '-',
-                SUBSTR(HEX(quest_templates.uuid), 21)
+                SUBSTR(HEX(ask_templates.uuid), 1, 8), '-',
+                SUBSTR(HEX(ask_templates.uuid), 9, 4), '-',
+                SUBSTR(HEX(ask_templates.uuid), 13, 4), '-',
+                SUBSTR(HEX(ask_templates.uuid), 17, 4), '-',
+                SUBSTR(HEX(ask_templates.uuid), 21)
               )),
-              quest_templates.label,
-              quest_templates.description
-            FROM quest_questionnaires
-              LEFT JOIN quest_templates ON quest_questionnaires.quest_template = quest_templates.id
-            WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
+              ask_templates.label,
+              ask_templates.description
+            FROM ask_questionnaires
+              LEFT JOIN ask_templates ON ask_questionnaires.ask_template = ask_templates.id
+            WHERE ask_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
           |sql}
       ;;
 
@@ -343,30 +341,30 @@ module MariaDB () = struct
           {sql|
           SELECT
             LOWER(CONCAT(
-              SUBSTR(HEX(quest_questions.uuid), 1, 8), '-',
-              SUBSTR(HEX(quest_questions.uuid), 9, 4), '-',
-              SUBSTR(HEX(quest_questions.uuid), 13, 4), '-',
-              SUBSTR(HEX(quest_questions.uuid), 17, 4), '-',
-              SUBSTR(HEX(quest_questions.uuid), 21)
+              SUBSTR(HEX(ask_questions.uuid), 1, 8), '-',
+              SUBSTR(HEX(ask_questions.uuid), 9, 4), '-',
+              SUBSTR(HEX(ask_questions.uuid), 13, 4), '-',
+              SUBSTR(HEX(ask_questions.uuid), 17, 4), '-',
+              SUBSTR(HEX(ask_questions.uuid), 21)
             )),
-            quest_questions.label,
-            quest_questions.help_text,
-            quest_questions.text,
-            quest_template_question_mappings.required,
-            quest_questions.default_value,
-            quest_questions.validation_regex,
-            quest_questions.question_type,
-            quest_questions.max_file_size_mb,
-            quest_questions.mime_types,
-            quest_questions.possible_options,
+            ask_questions.label,
+            ask_questions.help_text,
+            ask_questions.text,
+            ask_template_question_mappings.required,
+            ask_questions.default_value,
+            ask_questions.validation_regex,
+            ask_questions.question_type,
+            ask_questions.max_file_size_mb,
+            ask_questions.mime_types,
+            ask_questions.possible_options,
             LOWER(CONCAT(
-              SUBSTR(HEX(quest_answers.uuid), 1, 8), '-',
-              SUBSTR(HEX(quest_answers.uuid), 9, 4), '-',
-              SUBSTR(HEX(quest_answers.uuid), 13, 4), '-',
-              SUBSTR(HEX(quest_answers.uuid), 17, 4), '-',
-              SUBSTR(HEX(quest_answers.uuid), 21)
+              SUBSTR(HEX(ask_answers.uuid), 1, 8), '-',
+              SUBSTR(HEX(ask_answers.uuid), 9, 4), '-',
+              SUBSTR(HEX(ask_answers.uuid), 13, 4), '-',
+              SUBSTR(HEX(ask_answers.uuid), 17, 4), '-',
+              SUBSTR(HEX(ask_answers.uuid), 21)
             )),
-            quest_answers.text,
+            ask_answers.text,
             LOWER(CONCAT(
               SUBSTR(HEX(storage_handles.uuid), 1, 8), '-',
               SUBSTR(HEX(storage_handles.uuid), 9, 4), '-',
@@ -377,16 +375,16 @@ module MariaDB () = struct
             storage_handles.filename,
             storage_handles.filesize,
             storage_handles.mime
-          FROM quest_questionnaires
-            LEFT JOIN quest_templates ON quest_questionnaires.quest_template = quest_templates.id
-            LEFT JOIN quest_template_question_mappings ON quest_templates.id = quest_template_question_mappings.quest_template
-            LEFT JOIN quest_questions ON quest_template_question_mappings.quest_question = quest_questions.id
-            LEFT JOIN quest_answers ON quest_questionnaires.id = quest_answers.quest_questionnaire
-              AND quest_template_question_mappings.id = quest_answers.quest_template_question_mapping
-            LEFT JOIN storage_handles ON quest_answers.storage_handle = storage_handles.uuid
-          WHERE quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
-            AND quest_questions.uuid IS NOT NULL
-            ORDER BY quest_template_question_mappings.question_order ASC
+          FROM ask_questionnaires
+            LEFT JOIN ask_templates ON ask_questionnaires.ask_template = ask_templates.id
+            LEFT JOIN ask_template_question_mappings ON ask_templates.id = ask_template_question_mappings.ask_template
+            LEFT JOIN ask_questions ON ask_template_question_mappings.ask_question = ask_questions.id
+            LEFT JOIN ask_answers ON ask_questionnaires.id = ask_answers.ask_questionnaire
+              AND ask_template_question_mappings.id = ask_answers.ask_template_question_mapping
+            LEFT JOIN storage_handles ON ask_answers.storage_handle = storage_handles.uuid
+          WHERE ask_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
+            AND ask_questions.uuid IS NOT NULL
+            ORDER BY ask_template_question_mappings.question_order ASC
         |sql}
       ;;
 
@@ -404,13 +402,13 @@ module MariaDB () = struct
           {sql|
           SELECT
             LOWER(CONCAT(
-              SUBSTR(HEX(quest_answers.uuid), 1, 8), '-',
-              SUBSTR(HEX(quest_answers.uuid), 9, 4), '-',
-              SUBSTR(HEX(quest_answers.uuid), 13, 4), '-',
-              SUBSTR(HEX(quest_answers.uuid), 17, 4), '-',
-              SUBSTR(HEX(quest_answers.uuid), 21)
+              SUBSTR(HEX(ask_answers.uuid), 1, 8), '-',
+              SUBSTR(HEX(ask_answers.uuid), 9, 4), '-',
+              SUBSTR(HEX(ask_answers.uuid), 13, 4), '-',
+              SUBSTR(HEX(ask_answers.uuid), 17, 4), '-',
+              SUBSTR(HEX(ask_answers.uuid), 21)
             )),
-            quest_answers.text,
+            ask_answers.text,
             LOWER(CONCAT(
               SUBSTR(HEX(storage_handles.uuid), 1, 8), '-',
               SUBSTR(HEX(storage_handles.uuid), 9, 4), '-',
@@ -418,18 +416,18 @@ module MariaDB () = struct
               SUBSTR(HEX(storage_handles.uuid), 17, 4), '-',
               SUBSTR(HEX(storage_handles.uuid), 21)
             ))
-          FROM quest_answers
+          FROM ask_answers
             LEFT JOIN storage_handles
-              ON quest_answers.storage_handle = storage_handles.uuid
-            LEFT JOIN quest_template_question_mappings
-              ON quest_answers.quest_template_question_mapping = quest_template_question_mappings.id
-            LEFT JOIN quest_questions
-              ON quest_template_question_mappings.quest_question = quest_questions.id
-            LEFT JOIN quest_questionnaires
-              ON quest_answers.quest_questionnaire = quest_questionnaires.id
+              ON ask_answers.storage_handle = storage_handles.uuid
+            LEFT JOIN ask_template_question_mappings
+              ON ask_answers.ask_template_question_mapping = ask_template_question_mappings.id
+            LEFT JOIN ask_questions
+              ON ask_template_question_mappings.ask_question = ask_questions.id
+            LEFT JOIN ask_questionnaires
+              ON ask_answers.ask_questionnaire = ask_questionnaires.id
           WHERE
-          quest_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
-            AND quest_questions.uuid = UNHEX(REPLACE(?, '-', ''))
+          ask_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
+            AND ask_questions.uuid = UNHEX(REPLACE(?, '-', ''))
         |sql}
       ;;
 
@@ -443,12 +441,12 @@ module MariaDB () = struct
           (let open Caqti_type in
           tup2 string string)
           {sql|
-            INSERT INTO quest_questionnaires (
+            INSERT INTO ask_questionnaires (
               uuid,
-              quest_template
+              ask_template
             ) VALUES (
               UNHEX(REPLACE(?, '-', '')),
-              (SELECT id FROM quest_templates WHERE quest_templates.uuid = UNHEX(REPLACE(?, '-', '')))
+              (SELECT id FROM ask_templates WHERE ask_templates.uuid = UNHEX(REPLACE(?, '-', '')))
             );
           |sql}
       ;;
@@ -459,7 +457,7 @@ module MariaDB () = struct
       ;;
 
       let clean_request =
-        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_questionnaires;"
+        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE ask_questionnaires;"
       ;;
 
       let clean connection =
@@ -474,7 +472,7 @@ module MariaDB () = struct
           (let open Caqti_type in
           tup3 string string (option string))
           {sql|
-            INSERT INTO quest_templates (
+            INSERT INTO ask_templates (
               uuid,
               label,
               description
@@ -492,7 +490,7 @@ module MariaDB () = struct
       ;;
 
       let clean_request =
-        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE quest_templates;"
+        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE ask_templates;"
       ;;
 
       let clean connection =
@@ -507,16 +505,16 @@ module MariaDB () = struct
           (let open Caqti_type in
           tup2 string (tup2 string (tup2 string (tup2 int bool))))
           {sql|
-            INSERT INTO quest_template_question_mappings (
+            INSERT INTO ask_template_question_mappings (
               uuid,
-              quest_template,
-              quest_question,
+              ask_template,
+              ask_question,
               question_order,
               required
             ) VALUES (
               UNHEX(REPLACE(?, '-', '')),
-              (SELECT id FROM quest_templates WHERE quest_templates.uuid = UNHEX(REPLACE(?, '-', ''))),
-              (SELECT id FROM quest_questions WHERE quest_questions.uuid = UNHEX(REPLACE(?, '-', ''))),
+              (SELECT id FROM ask_templates WHERE ask_templates.uuid = UNHEX(REPLACE(?, '-', ''))),
+              (SELECT id FROM ask_questions WHERE ask_questions.uuid = UNHEX(REPLACE(?, '-', ''))),
               ?,
               ?
             );
@@ -531,7 +529,7 @@ module MariaDB () = struct
       let clean_request =
         Caqti_request.exec
           Caqti_type.unit
-          "TRUNCATE TABLE quest_template_question_mappings;"
+          "TRUNCATE TABLE ask_template_question_mappings;"
       ;;
 
       let clean connection =

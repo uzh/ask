@@ -1,21 +1,20 @@
 open Lwt.Syntax
 module TestSeed = Test_seed
 
-module Make (QuestService : Quest.Sig) (StorageService : Sihl.Contract.Storage.Sig) =
-struct
-  module Model = Quest.Model
-  module Seed = TestSeed.Make (QuestService)
-  module Questionnaire = QuestService.Questionnaire
+module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) = struct
+  module Model = Ask.Model
+  module Seed = TestSeed.Make (AskService)
+  module Questionnaire = AskService.Questionnaire
 
-  let lifecycle = QuestService.lifecycle
-  let register = QuestService.register
+  let lifecycle = AskService.lifecycle
+  let register = AskService.register
 
   let alco_question_answer_input =
     Alcotest.testable Model.QuestionAnswer.pp Model.QuestionAnswer.equal
   ;;
 
   let create_empty_questionnaire _ () =
-    let* () = QuestService.Internal__.clean () in
+    let* () = AskService.Internal__.clean () in
     let* template_id = Questionnaire.create_template ~label:"foobar" () in
     let* questionnaire_id =
       Questionnaire.instantiate_questionnaire
@@ -43,7 +42,7 @@ struct
   ;;
 
   let add_question_and_fetch_questionnaire _ () =
-    let* () = QuestService.Internal__.clean () in
+    let* () = AskService.Internal__.clean () in
     let* questionnaire =
       Seed.AttributeTest.questionnaire ~label:"foobar" |> Lwt.map CCResult.get_or_failwith
     in
@@ -75,7 +74,7 @@ struct
   ;;
 
   let answer_questionnaire_partially_fails _ () =
-    let* () = QuestService.Internal__.clean () in
+    let* () = AskService.Internal__.clean () in
     let* questionnaire, q1, _, _ =
       Seed.AttributeTest.empty_questionnaire_with_three_questions ~label:"some label"
     in
@@ -92,7 +91,7 @@ struct
   ;;
 
   let answer_questionnaire_fully _ () =
-    let* () = QuestService.Internal__.clean () in
+    let* () = AskService.Internal__.clean () in
     let* questionnaire, _, _, _ =
       Seed.AttributeTest.empty_questionnaire_with_three_questions ~label:"some label"
     in
@@ -109,7 +108,7 @@ struct
   ;;
 
   let answer_only_file_question _ () =
-    let* () = QuestService.Internal__.clean () in
+    let* () = AskService.Internal__.clean () in
     let* questionnaire, _, _, _ =
       Seed.AttributeTest.empty_questionnaire_with_three_questions ~label:"some label"
     in
@@ -164,7 +163,7 @@ struct
   ;;
 
   let answer_already_answered_text_questionnaire _ () =
-    let* () = QuestService.Internal__.clean () in
+    let* () = AskService.Internal__.clean () in
     let* questionnaire, question1, question2, _ =
       Seed.AttributeTest.questionnaire_with_three_answered_questions ~label:"some label"
       |> Lwt.map CCResult.get_or_failwith
@@ -200,7 +199,7 @@ struct
   ;;
 
   let answer_already_answered_file_questionnaire _ () =
-    let* () = QuestService.Internal__.clean () in
+    let* () = AskService.Internal__.clean () in
     let* questionnaire, _, _, question3 =
       Seed.AttributeTest.questionnaire_with_three_answered_questions ~label:"some label"
       |> Lwt.map CCResult.get_or_failwith
@@ -251,7 +250,7 @@ struct
   ;;
 
   let delete_uploaded_asset_answer _ () =
-    let* () = QuestService.Internal__.clean () in
+    let* () = AskService.Internal__.clean () in
     let* questionnaire, _, _, question3 =
       Seed.AttributeTest.questionnaire_with_three_answered_questions ~label:"some label"
       |> Lwt.map CCResult.get_or_failwith
@@ -283,6 +282,6 @@ struct
 
   let clean_all _ () =
     let* _ = Sihl.Cleaner.clean_all () in
-    QuestService.Internal__.clean ()
+    AskService.Internal__.clean ()
   ;;
 end

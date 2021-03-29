@@ -8,20 +8,28 @@ sudo chown -R opam: _build
 opam remote remove --all default
 opam remote add default https://opam.ocaml.org
 
-# Pins
-opam pin add -yn ocaml-lsp-server https://github.com/ocaml/ocaml-lsp.git
-# due to no current releases, pin to master
-# opam pin add -yn sihl https://github.com/oxidizing/sihl.git\#0.2.0
-
 # install opam packages
 # e.g. when developing with emax, add also: utop merlin ocamlformat
-opam install caqti-driver-mariadb ocamlformat ocaml-lsp-server sihl
+opam install \
+  alcotest-lwt \
+  caqti-driver-mariadb \
+  caqti-driver-postgresql \
+  caqti-lwt \
+  cohttp-lwt-unix \
+  ocaml-lsp-server.1.4.0 \
+  ocamlformat \
+  sihl
 
 # install project dependancies
-opam pin add -y -n quest .
-OPAMSOLVERTIMEOUT=180 opam depext -y quest
-opam install --deps-only -y quest --with-test
-opam install -y alcotest-lwt
+# pin package
+opam pin add . --yes --no-action
+# Query and install external dependencies
+opam depext ask ask-integrator --yes --with-doc --with-test
+# install dependencies
+OPAMSOLVERTIMEOUT=180 opam install . --deps-only --with-doc --with-test --locked --unlock-base
+opam install ocamlformat --skip-updates
+# upgrade dependencies
+opam upgrade --fixup
 
 # initialize project and update environmemnt
 opam init
