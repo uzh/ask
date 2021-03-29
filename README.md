@@ -2,6 +2,8 @@
 
 Questionnaires with support for creating and answering questions
 
+_Note that it's still under active development._
+
 ## Ask package
 
 ### About

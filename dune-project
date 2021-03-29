@@ -1,26 +1,29 @@
-(lang dune 2.8)
+(lang dune 2.7)
 
 (generate_opam_files true)
 
 (name ask)
 
-(version 0.1.1)
+(version 0.2.0)
 
 (authors "Marc Biedermann")
+
+(source
+ (github uzh/ask))
 
 (license MIT)
 
 (maintainers "marc.biedermann@econ.uzh.ch")
 
-(homepage "https://gitlab.uzh.ch/econ/research/tools/ask")
+(homepage "https://github.com/uzh/ask")
 
-(bug_reports "https://gitlab.uzh.ch/econ/research/tools/ask/-/issues")
+(bug_reports "https://github.com/uzh/ask/-/issues")
 
-(documentation "https://gitlab.uzh.ch/econ/research/tools/ask")
+(documentation "https://github.com/uzh/ask")
 
 (package
  (name ask)
- (synopsis "A package to create questionnaires")
+ (synopsis "Create/Answer questionnaires")
  (description "Generating and answering questions should be easy")
  (depends
   dune
@@ -48,7 +51,7 @@
 
 (package
  (name ask-integrator)
- (synopsis "A package to link questionnaires to a' type")
+ (synopsis "Link questionnaires to an uuid of 'a type")
  (description "Generate a link between questionnaires and types")
  (depends
   dune
