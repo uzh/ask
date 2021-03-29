@@ -113,11 +113,12 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
         let* asset_id =
           Repo.Questionnaire.find_asset_id ~questionnaire_id ~question_id
           |> Lwt.map
-               (CCOpt.to_result
-                  (Caml.Format.asprintf
-                     "Asset id not found for questionnaire_id %s and question_id %s"
-                     questionnaire_id
-                     question_id))
+               (Option.to_result
+                  ~none:
+                    (Caml.Format.asprintf
+                       "Asset id not found for questionnaire_id %s and question_id %s"
+                       questionnaire_id
+                       question_id))
           |> Lwt.map CCResult.get_or_failwith
         in
         let* file = Storage.find ~id:asset_id in
@@ -134,11 +135,12 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
         let* asset_id =
           Repo.Questionnaire.find_asset_id ~questionnaire_id ~question_id
           |> Lwt.map
-               (CCOpt.to_result
-                  (Caml.Format.asprintf
-                     "Asset id not found for questionnaire_id %s and question_id %s"
-                     questionnaire_id
-                     question_id))
+               (Option.to_result
+                  ~none:
+                    (Caml.Format.asprintf
+                       "Asset id not found for questionnaire_id %s and question_id %s"
+                       questionnaire_id
+                       question_id))
           |> Lwt.map CCResult.get_or_failwith
         in
         let* _ = Storage.delete ~id:asset_id in

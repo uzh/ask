@@ -61,7 +61,7 @@ let empty_questionnaire_with_three_questions ~label =
     (* Find previously created questionnaire *)
     let* questionnaire =
         find questionnaire_id
-        |> Lwt.map (CCOpt.to_result "Seed failed, can not create questionnaire")
+        |> Lwt.map (Option.to_result ~none:"Seed failed, can not create questionnaire")
         |> Lwt.map CCResult.get_or_failwith
       in
       Lwt.return (questionnaire, question1, question2, question3)
@@ -94,7 +94,7 @@ let questionnaire_with_three_answered_questions ~label =
       let questionnaire_id = Model.Questionnaire.uuid questionnaire in
       let* questionnaire =
         find questionnaire_id
-        |> Lwt.map (CCOpt.to_result "No questionnaire found")
+        |> Lwt.map (Option.to_result ~none:"No questionnaire found")
         |> Lwt.map CCResult.get_or_failwith
       in
       Lwt.return (Ok (questionnaire, question1, question2, question3))

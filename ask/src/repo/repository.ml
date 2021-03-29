@@ -147,11 +147,12 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
           let* answer =
             find_answer ~questionnaire_id ~question_id
             |> Lwt.map
-                 (CCOpt.to_result
-                    (Caml.Format.asprintf
-                       "Answer with questionnaire_id %s and question_id %s"
-                       questionnaire_id
-                       question_id))
+                 (Option.to_result
+                    ~none:
+                      (Caml.Format.asprintf
+                         "Answer with questionnaire_id %s and question_id %s"
+                         questionnaire_id
+                         question_id))
             |> Lwt.map CCResult.get_or_failwith
           in
           let answer_id = RepoModel.AnswerRow.uuid answer in
@@ -171,11 +172,12 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
           let* answer =
             find_answer ~questionnaire_id ~question_id
             |> Lwt.map
-                 (CCOpt.to_result
-                    (Caml.Format.asprintf
-                       "Answer with questionnaire_id %s and question_id %s"
-                       questionnaire_id
-                       question_id))
+                 (Option.to_result
+                    ~none:
+                      (Caml.Format.asprintf
+                         "Answer with questionnaire_id %s and question_id %s"
+                         questionnaire_id
+                         question_id))
             |> Lwt.map CCResult.get_or_failwith
           in
           let answer_id = RepoModel.AnswerRow.uuid answer in

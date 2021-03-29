@@ -13,7 +13,7 @@ module Make (TestService : Ask_integrator.Sig) (AskService : Ask.Sig) = struct
           ~questionnaire_id:(Uuidm.create `V4 |> Uuidm.to_string)
       in
       find questionnaire_id
-      |> Lwt.map (CCOpt.to_result "Seed failed, can not create questionnaire")
+      |> Lwt.map (Option.to_result ~none:"Seed failed, can not create questionnaire")
     ;;
 
     let empty_questionnaire_with_three_questions ~label =
@@ -57,7 +57,7 @@ module Make (TestService : Ask_integrator.Sig) (AskService : Ask.Sig) = struct
       in
       let* questionnaire =
         find questionnaire_id
-        |> Lwt.map (CCOpt.to_result "Seed failed, can not create questionnaire")
+        |> Lwt.map (Option.to_result ~none:"Seed failed, can not create questionnaire")
         |> Lwt.map CCResult.get_or_failwith
       in
       Lwt.return (questionnaire, question1, question2, question3)
@@ -81,7 +81,7 @@ module Make (TestService : Ask_integrator.Sig) (AskService : Ask.Sig) = struct
       let questionnaire_id = Model.Questionnaire.uuid questionnaire in
       let* questionnaire =
         find questionnaire_id
-        |> Lwt.map (CCOpt.to_result "No questionnaire found")
+        |> Lwt.map (Option.to_result ~none:"No questionnaire found")
         |> Lwt.map CCResult.get_or_failwith
       in
       Lwt.return (Ok (questionnaire, question1, question2, question3))
