@@ -15,7 +15,7 @@ let lwt_check_raises f msg =
   | Error (Exception e_msg) ->
     Alcotest.(check string "Correct exception" msg e_msg);
     Lwt.return ()
-  | Error (Quest.MariaDb.Questionnaire.Exception e_msg) ->
+  | Error (Ask.MariaDb.Questionnaire.Exception e_msg) ->
     Alcotest.(check string "Correct exception" msg e_msg);
     Lwt.return ()
   | Error CCResult.Get_error ->
@@ -26,12 +26,4 @@ let lwt_check_raises f msg =
     and stack = Caml.Printexc.get_backtrace () in
     let err_msg = Printf.sprintf "DB: %s%s\n" msg stack in
     Alcotest.fail @@ "Unexpected exception thrown " ^ err_msg
-;;
-
-let setup_test () =
-  let file_configuration = Sihl.Configuration.read_env_file () in
-  let () = Sihl.Configuration.store @@ Option.value file_configuration ~default:[] in
-  let () = Logs.set_level (Some Logs.Error) in
-  let () = Logs.set_reporter Sihl.Log.default_reporter in
-  ()
 ;;

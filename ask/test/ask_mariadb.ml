@@ -1,5 +1,4 @@
 open Alcotest_lwt
-open Lwt.Syntax
 
 (* services *)
 module Migration = Sihl.Database.Migration.MariaDb
@@ -7,7 +6,7 @@ module Storage = Sihl_storage.MariaDb
 module Database = Sihl.Database
 
 (* Test service *)
-module TestService = Test_service.Make (Quest.MariaDb) (Storage)
+module TestService = Test_service.Make (Ask.MariaDb) (Storage)
 
 let suite =
   [ ( "questionnaire model"
@@ -94,9 +93,14 @@ let services =
 ;;
 
 let () =
-  let () = Test_utils.setup_test () in
+  let open Lwt.Syntax in
+  Sihl.Configuration.read_string "DATABASE_URL_TEST_MARIADB"
+  |> Option.value ~default:"mariadb://admin:password@127.0.0.1:3306/dev"
+  |> Unix.putenv "DATABASE_URL";
+  let () = Logs.set_level (Some Logs.Error) in
+  let () = Logs.set_reporter Sihl.Log.default_reporter in
   Lwt_main.run
     (let* _ = Sihl.Container.start_services services in
      let* _ = Migration.run_all () in
-     Alcotest_lwt.run "questionnaire component" @@ suite)
+     Alcotest_lwt.run "questionnaire component" suite)
 ;;

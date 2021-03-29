@@ -1,11 +1,11 @@
 open Lwt.Syntax
 
-module Make (QuestService : Quest.Sig) = struct
+module Make (AskService : Ask.Sig) = struct
   module AttributeTest = struct
-    module Model = Quest.Model
+    module Model = Ask.Model
 
     let questionnaire ~label =
-      let open QuestService.Questionnaire in
+      let open AskService.Questionnaire in
       let* template_id = create_template ~label () in
       let* questionnaire_id =
         instantiate_questionnaire
@@ -17,7 +17,7 @@ module Make (QuestService : Quest.Sig) = struct
     ;;
 
     let empty_questionnaire_with_three_questions ~label =
-      let open QuestService.Questionnaire in
+      let open AskService.Questionnaire in
       let* template_id = create_template ~label () in
       let question1 =
         Model.Question.Text
@@ -64,7 +64,7 @@ module Make (QuestService : Quest.Sig) = struct
     ;;
 
     let questionnaire_with_three_answered_questions ~label =
-      let open QuestService.Questionnaire in
+      let open AskService.Questionnaire in
       let* questionnaire, question1, question2, question3 =
         empty_questionnaire_with_three_questions ~label
       in

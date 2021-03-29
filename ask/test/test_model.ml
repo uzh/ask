@@ -1,4 +1,4 @@
-module Model = Quest.Model
+module Model = Ask.Model
 
 let input = Alcotest.testable Model.QuestionAnswer.pp Model.QuestionAnswer.equal
 let event = Alcotest.testable Model.Event.pp Model.Event.equal

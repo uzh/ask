@@ -182,15 +182,13 @@ module Question = struct
         validation_error (uuid question) "Please enter a date in the format 1990-11-25")
     | ( File (_, _, _, _, supported_mime_types, max_file_sizeMb, _)
       , Some (Asset (_, _, size_byte, mime_type, _)) ) ->
-      let size_mb =
-        CCFloat.of_int size_byte *. (10. ** -6.) |> CCFloat.round |> CCInt.of_float
-      in
+      let size_mb = 1 + Int.div size_byte 1000000 in
       (match size_mb <= max_file_sizeMb, CCList.mem mime_type supported_mime_types with
       | true, true -> Ok ()
       | false, true ->
         validation_error
           (uuid question)
-          (Caml.Format.asprintf "Asset file size too big (max. %d)" size_mb)
+          (Caml.Format.asprintf "Asset file size too big (max. %d)" max_file_sizeMb)
       | _, false -> validation_error (uuid question) "Invalid value provided")
     | question, _ -> validation_error (uuid question) "Invalid value provided"
   ;;

@@ -3,7 +3,7 @@ module MariaDB = struct
     Sihl.Database.Migration.create_step
       ~label:"questions"
       {sql|
-        CREATE TABLE IF NOT EXISTS `quest_questions` (
+        CREATE TABLE IF NOT EXISTS `ask_questions` (
           `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
           `uuid` binary(16) NOT NULL,
           `label` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -27,7 +27,7 @@ module MariaDB = struct
     Sihl.Database.Migration.create_step
       ~label:"templates"
       {sql|
-        CREATE TABLE IF NOT EXISTS `quest_templates` (
+        CREATE TABLE IF NOT EXISTS `ask_templates` (
           `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
           `uuid` binary(16) NOT NULL,
           `label` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -45,16 +45,16 @@ module MariaDB = struct
     Sihl.Database.Migration.create_step
       ~label:"questionnaires"
       {sql|
-        CREATE TABLE IF NOT EXISTS `quest_questionnaires` (
+        CREATE TABLE IF NOT EXISTS `ask_questionnaires` (
           `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
           `uuid` binary(16) NOT NULL,
-          `quest_template` bigint(20) unsigned NOT NULL,
+          `ask_template` bigint(20) unsigned NOT NULL,
           `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
           `updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         UNIQUE KEY `unique_uuid` (`uuid`),
-        KEY `quest_template` (`quest_template`),
-        CONSTRAINT `quest_questionnaires_ibfk_1` FOREIGN KEY (`quest_template`) REFERENCES `quest_templates` (`id`)
+        KEY `ask_template` (`ask_template`),
+        CONSTRAINT `ask_questionnaires_ibfk_1` FOREIGN KEY (`ask_template`) REFERENCES `ask_templates` (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
       |sql}
   ;;
@@ -63,21 +63,21 @@ module MariaDB = struct
     Sihl.Database.Migration.create_step
       ~label:"mappings"
       {sql|
-        CREATE TABLE IF NOT EXISTS `quest_template_question_mappings` (
+        CREATE TABLE IF NOT EXISTS `ask_template_question_mappings` (
           `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
           `uuid` binary(16) NOT NULL,
-          `quest_template` bigint(20) unsigned NOT NULL,
-          `quest_question` bigint(20) unsigned NOT NULL,
+          `ask_template` bigint(20) unsigned NOT NULL,
+          `ask_question` bigint(20) unsigned NOT NULL,
           `question_order` bigint(20) unsigned NOT NULL,
           `required` tinyint(1) DEFAULT '0',
           `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
           `updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         UNIQUE KEY `unique_uuid` (`uuid`),
-        UNIQUE KEY `unique_order` (`quest_template`, `question_order`),
-        KEY `quest_question` (`quest_question`),
-        CONSTRAINT `quest_template_question_mappings_ibfk_1` FOREIGN KEY (`quest_template`) REFERENCES `quest_templates` (`id`),
-        CONSTRAINT `quest_template_question_mappings_ibfk_2` FOREIGN KEY (`quest_question`) REFERENCES `quest_questions` (`id`)
+        UNIQUE KEY `unique_order` (`ask_template`, `question_order`),
+        KEY `ask_question` (`ask_question`),
+        CONSTRAINT `ask_template_question_mappings_ibfk_1` FOREIGN KEY (`ask_template`) REFERENCES `ask_templates` (`id`),
+        CONSTRAINT `ask_template_question_mappings_ibfk_2` FOREIGN KEY (`ask_question`) REFERENCES `ask_questions` (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
       |sql}
   ;;
@@ -87,22 +87,22 @@ module MariaDB = struct
       ~label:"answers"
       ~check_fk:false
       {sql|
-        CREATE TABLE IF NOT EXISTS `quest_answers` (
+        CREATE TABLE IF NOT EXISTS `ask_answers` (
           `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
           `uuid` binary(16) NOT NULL,
-          `quest_questionnaire` bigint(20) unsigned NOT NULL,
-          `quest_template_question_mapping` bigint(20) unsigned NOT NULL,
+          `ask_questionnaire` bigint(20) unsigned NOT NULL,
+          `ask_template_question_mapping` bigint(20) unsigned NOT NULL,
           `text` varchar(5000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
           `storage_handle` binary(16) NULL,
           `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
           `updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           PRIMARY KEY (`id`),
           UNIQUE KEY `unique_uuid` (`uuid`),
-          KEY `quest_questionnaire` (`quest_questionnaire`),
-          KEY `quest_template_question_mapping` (`quest_template_question_mapping`),
+          KEY `ask_questionnaire` (`ask_questionnaire`),
+          KEY `ask_template_question_mapping` (`ask_template_question_mapping`),
           KEY `storage_handle` (`storage_handle`),
-          CONSTRAINT `quest_answers_ibfk_1` FOREIGN KEY (`quest_questionnaire`) REFERENCES `quest_questionnaires` (`id`),
-          CONSTRAINT `quest_answers_ibfk_2` FOREIGN KEY (`quest_template_question_mapping`) REFERENCES `quest_template_question_mappings` (`id`)
+          CONSTRAINT `ask_answers_ibfk_1` FOREIGN KEY (`ask_questionnaire`) REFERENCES `ask_questionnaires` (`id`),
+          CONSTRAINT `ask_answers_ibfk_2` FOREIGN KEY (`ask_template_question_mapping`) REFERENCES `ask_template_question_mappings` (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
       |sql}
   ;;
