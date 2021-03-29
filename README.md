@@ -8,7 +8,7 @@ _Note that it's still under active development and it only supports mariadb so f
 
 ### About
 
-Ask allows you to create Questionnaires, add some questions and answer them in an easy way.
+Ask allows you to create and answer Questionnaires. Additionaly it provides templating for quesitonnaires.
 
 ### Usage
 
