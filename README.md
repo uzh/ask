@@ -2,7 +2,7 @@
 
 Questionnaires with support for creating and answering questions
 
-_Note that it's still under active development._
+_Note that it's still under active development and it only supports mariadb so far._
 
 ## Ask package
 

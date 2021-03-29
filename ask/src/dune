@@ -1,7 +1,7 @@
 (library
  (name ask)
  (public_name ask)
- (libraries base sihl sihl-storage)
+ (libraries sihl sihl-storage)
  (preprocess
   (pps
    ppx_fields_conv

@@ -161,25 +161,23 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
     ;;
 
     let answer questionnaire answers =
-      (* TODO: Remove Base dependency *)
-      let events =
-        Model.Questionnaire.answer questionnaire answers
-        |> Base.Result.map_error ~f:(fun errors ->
-               errors
-               |> CCList.head_opt
-               |> Base.Option.value_map
-                    ~f:(fun e -> Exception e)
-                    ~default:(Exception "Could not answer questionnaire"))
-        |> Base.Result.ok_exn
-      in
-      let rec handle_events events =
-        match events with
-        | event :: events ->
-          let* () = handle_event event in
-          handle_events events
-        | [] -> Lwt.return ()
-      in
-      handle_events events
+      let events = Model.Questionnaire.answer questionnaire answers in
+      match events with
+      | Error errors ->
+        Exception
+          (errors
+          |> CCList.head_opt
+          |> Option.value ~default:"Could not answer questionnaire")
+        |> raise
+      | Ok events ->
+        let rec handle_events events =
+          match events with
+          | event :: events ->
+            let* () = handle_event event in
+            handle_events events
+          | [] -> Lwt.return ()
+        in
+        handle_events events
     ;;
 
     let add_question ~template_id ~order question =

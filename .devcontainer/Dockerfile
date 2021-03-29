@@ -8,13 +8,14 @@ RUN sudo apt-get update -q && sudo apt-get install -yqq \
   # emacs-nox for emacs, but sihl cannot be installed without
   emacs-nox \
   inotify-tools \
+  libev-dev \
   libffi-dev \
   libfontconfig \
   libgmp-dev \
   libmariadb-dev \
+  libpq-dev \
   libqt5gui5 \
   libssl-dev \
-  libev-dev \
   lsof \
   m4 \
   pdftk-java \

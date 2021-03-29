@@ -1,7 +1,7 @@
 (library
  (name ask_integrator)
  (public_name ask-integrator)
- (libraries base sihl ask)
+ (libraries sihl ask)
  (preprocess
   (pps
    ppx_fields_conv

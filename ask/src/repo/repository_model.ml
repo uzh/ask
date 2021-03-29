@@ -39,7 +39,7 @@ module QuestionRow = struct
       ; text
       ; question_type = "file"
       ; max_file_size = Some max_file_size
-      ; mime_types = Some (mime_types |> Base.String.concat ~sep:",")
+      ; mime_types = Some (mime_types |> String.concat ",")
       }
     | Date (id, label, help_text, text, _) ->
       { question_row with id; label; help_text; text; question_type = "date" }
@@ -50,7 +50,7 @@ module QuestionRow = struct
       ; help_text
       ; text
       ; question_type = "select"
-      ; options = Some (possible_options |> Base.String.concat ~sep:",")
+      ; options = Some (possible_options |> String.concat ",")
       }
     | Text (id, label, help_text, text, default, regex, _) ->
       { question_row with
@@ -540,14 +540,13 @@ module QuestionnaireRow = struct
 
   let to_questionnaire row question_rows =
     let questions =
-      QuestionAnswerRow.to_question_answer_input question_rows
-      |> Base.Result.ok_or_failwith
+      QuestionAnswerRow.to_question_answer_input question_rows |> CCResult.get_or_failwith
     in
     Model.Questionnaire.make
       ~uuid:row.uuid
       ~template_uuid:row.template_uuid
       ~label:row.template_label
-      ~description:(row.template_description |> Base.Option.value ~default:"")
+      ~description:(row.template_description |> Option.value ~default:"")
       ~questions
       ()
   ;;
