@@ -12,34 +12,33 @@
   ],
   "workspaceFolder": "/workspace",
   "remoteEnv": {
-    "DATABASE_URL": "mariadb://root@database:3306/development",
-    "DATABASE_URL_TEST_MARIADB": "mariadb://root@database:3306/test",
     "VERSION": "dev",
-    "OPAM_SWITCH_PREFIX": "/home/opam/.opam/4.11",
-    "CAML_LD_LIBRARY_PATH": "/home/opam/.opam/4.11/lib/stublibs:/home/opam/.opam/4.11/lib/ocaml/stublibs:/home/opam/.opam/4.11/lib/ocaml",
-    "OCAML_TOPLEVEL_PATH": "/home/opam/.opam/4.11/lib/toplevel",
-    "MANPATH": ":/home/opam/.opam/4.11/man",
+    "OPAMWORKINGDIR": "true",
+    "OPAMSOLVERTIMEOUT": "180",
     "PATH": "/home/opam/.opam/4.11/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   },
-  "postCreateCommand": ".devcontainer/wait-for-database.sh test .devcontainer/postCreate.sh",
+  "postCreateCommand": "/bin/zsh -c '.devcontainer/wait-for-database.sh test .devcontainer/postCreate.sh'",
   // Use 'settings' to set *default* container specific settings.json values on container create.
   // You can edit these settings after create using File > Preferences > Settings > Remote.
   "settings": {
-    "terminal.integrated.shell.linux": "/bin/zsh",
+    "terminal.integrated.shell.linux": "/bin/zsh", // using deprecated setting as new setting does not work (yet)
     "editor.formatOnSave": true,
     "files.associations": {
       "*.ml": "ocaml",
       "*.mli": "ocaml"
     },
+    "git.mergeEditor": false,
     "ocaml.sandbox": {
-      "kind": "global"
+      "kind": "opam",
+      "switch": "4.12"
     }
   },
   // Add the IDs of extensions you want installed when the container is created in the array below.
   "extensions": [
     "donjayamanne.githistory",
     "eamodio.gitlens",
-    "hackwaly.ocaml-debugger",
+    "exiasr.hadolint",
+    "irongeek.vscode-env",
     "ocamllabs.ocaml-platform"
   ]
 }

@@ -2,35 +2,20 @@
 
 sudo chown -R opam: _build
 
-# remove and update default ocaml remote
-# make sure that opam finds latest package versions
+opam init -a --shell=zsh
+
+# update default ocaml remote - make sure that opam finds latest package versions
 # (e.g. otherwise alcotest latest version is 1.1.0 instead of 1.2.1)
 opam remote remove --all default
-opam remote add default https://opam.ocaml.org
+opam repository add default --all-switches --set-default https://opam.ocaml.org
 
-# install opam packages
-# e.g. when developing with emax, add also: utop merlin ocamlformat
-opam install \
-  alcotest-lwt \
-  caqti-driver-mariadb \
-  caqti-driver-postgresql \
-  caqti-lwt \
-  cohttp-lwt-unix \
-  ocaml-lsp-server.1.4.0 \
-  ocamlformat \
-  sihl
+# ensure all system dependencies are installed
+repo=https://github.com/oxidizing/sihl.git
+opam pin add -yn sihl $repo
+opam pin add -yn sihl-storage $repo
+opam pin add -yn conformist https://github.com/oxidizing/conformist.git
 
-# install project dependancies
-# pin package
-opam pin add . --yes --no-action
-# Query and install external dependencies
-opam depext ask ask-integrator --yes --with-doc --with-test
-# install dependencies
-OPAMSOLVERTIMEOUT=180 opam install . --deps-only --with-doc --with-test --locked --unlock-base
-opam install ocamlformat --skip-updates
-# upgrade dependencies
-opam upgrade --fixup
+opam pin add -yn .
+opam depext -y ask ask-integrator
 
-# initialize project and update environmemnt
-opam init
-eval $(opam env)
+make deps
