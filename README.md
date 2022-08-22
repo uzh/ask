@@ -21,7 +21,7 @@ let empty_questionnaire_with_three_questions ~label =
     (* Creating Questions *)
     let question1 =
         Model.Question.Text
-            ( Uuidm.create `V4 |> Uuidm.to_string
+            ( Uuidm.v `V4 |> Uuidm.to_string
             , Some "age"
             , None
             , "How old are you?"
@@ -31,7 +31,7 @@ let empty_questionnaire_with_three_questions ~label =
         in
     let question2 =
         Model.Question.YesNo
-            ( Uuidm.create `V4 |> Uuidm.to_string
+            ( Uuidm.v `V4 |> Uuidm.to_string
             , Some "student"
             , None
             , "Are you a student?"
@@ -39,7 +39,7 @@ let empty_questionnaire_with_three_questions ~label =
         in
     let question3 =
         Model.Question.File
-            ( Uuidm.create `V4 |> Uuidm.to_string
+            ( Uuidm.v `V4 |> Uuidm.to_string
             , Some "diploma"
             , None
             , "Upload your diploma."
@@ -57,7 +57,7 @@ let empty_questionnaire_with_three_questions ~label =
     let* questionnaire_id =
             instantiate_questionnaire
             ~template_id
-            ~questionnaire_id:(Uuidm.create `V4 |> Uuidm.to_string)
+            ~questionnaire_id:(Uuidm.v `V4 |> Uuidm.to_string)
         in
 
     (* Find previously created questionnaire *)
@@ -117,7 +117,7 @@ let ask_integrator_with_one_filled_questionnaire =
     let open Ask_integrator.Model in
 
     (* member id has the format uuid and is used to link one of your models (e.g. to a User) *)
-    let member_id = Uuidm.create `V4 |> Uuidm.to_string in
+    let member_id = Uuidm.v `V4 |> Uuidm.to_string in
     (* member label is a string which should help you where the member id is comming from *)
     let member_label = "user" in
     (* questionnaire_label is a label for the linked questionnaire, it's possible to search for that label for a specified integrator *)

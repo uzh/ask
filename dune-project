@@ -30,11 +30,15 @@
   (ocaml
    (>= 4.11))
   (sihl
-   (= 0.4.0))
+    (and
+    (>= 3.0.4)
+    (< 4.0.0)))
   (sihl-storage
-   (= 0.4.0))
+    (and
+    (>= 3.0.4)
+    (< 4.0.0)))
   (conformist
-   (= 0.4.0))
+   (>= 0.8.1))
   (lwt_ssl
    (>= 1.1.3))
   (ppx_fields_conv
@@ -60,11 +64,15 @@
   (ask
    (= :version))
   (sihl
-   (= 0.4.0))
+    (and
+    (>= 3.0.4)
+    (< 4.0.0)))
   (sihl-storage
-   (= 0.4.0))
+    (and
+    (>= 3.0.4)
+    (< 4.0.0)))
   (conformist
-   (= 0.4.0))
+   (>= 0.8.1))
   (lwt_ssl
    (>= 1.1.3))
   (ppx_fields_conv
