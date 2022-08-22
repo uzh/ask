@@ -25,5 +25,5 @@ let lwt_check_raises f msg =
     let msg = Caml.Printexc.to_string e
     and stack = Caml.Printexc.get_backtrace () in
     let err_msg = Printf.sprintf "DB: %s%s\n" msg stack in
-    Alcotest.fail @@ "Unexpected exception thrown " ^ err_msg
+    Alcotest.fail ("Unexpected exception thrown " ^ err_msg)
 ;;

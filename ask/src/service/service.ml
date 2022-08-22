@@ -90,19 +90,19 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
       match event with
       | Model.Event.TextAnswerCreated (questionnaire_id, question_id, text) ->
         Repo.Questionnaire.create_text_answer
-          ~answer_id:(Uuidm.create `V4 |> Uuidm.to_string)
+          ~answer_id:(Uuidm.v `V4 |> Uuidm.to_string)
           ~questionnaire_id
           ~question_id
           ~text
       | Model.Event.AssetAnswerCreated
           (questionnaire_id, question_id, (_, filename, size, mime, data)) ->
-        let asset_id = Uuidm.create `V4 |> Uuidm.to_string in
+        let asset_id = Uuidm.v `V4 |> Uuidm.to_string in
         let file =
           Sihl.Contract.Storage.{ id = asset_id; filename; filesize = size; mime }
         in
-        let* _ = Storage.upload_base64 file ~base64:data in
+        let* _ = Storage.upload_base64 file data in
         Repo.Questionnaire.create_asset_answer
-          ~answer_id:(Uuidm.create `V4 |> Uuidm.to_string)
+          ~answer_id:(Uuidm.v `V4 |> Uuidm.to_string)
           ~questionnaire_id
           ~question_id
           ~asset_id
@@ -121,7 +121,7 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
                        question_id))
           |> Lwt.map CCResult.get_or_failwith
         in
-        let* file = Storage.find ~id:asset_id in
+        let* file = Storage.find asset_id in
         let updated_file =
           let open Sihl.Contract.Storage in
           file
@@ -129,7 +129,7 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
           |> set_filesize_stored size
           |> set_mime_stored mime
         in
-        let* _ = Storage.update_base64 updated_file ~base64:data in
+        let* _ = Storage.update_base64 updated_file data in
         Repo.Questionnaire.update_asset_answer ~questionnaire_id ~question_id ~asset_id
       | Model.Event.AssetAnswerDelete (questionnaire_id, question_id) ->
         let* asset_id =
@@ -143,7 +143,7 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
                        question_id))
           |> Lwt.map CCResult.get_or_failwith
         in
-        let* _ = Storage.delete ~id:asset_id in
+        let* _ = Storage.delete asset_id in
         Repo.Questionnaire.delete_answer ~questionnaire_id ~question_id
     ;;
 
@@ -155,7 +155,7 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
     let find id = Repo.Questionnaire.find id
 
     let create_template ?id ~label ?description () =
-      let id = id |> CCOpt.value ~default:(Uuidm.create `V4 |> Uuidm.to_string) in
+      let id = id |> CCOption.value ~default:(Uuidm.v `V4 |> Uuidm.to_string) in
       let* () = Repo.Questionnaire.create_template ~id ~label ~description in
       Lwt.return id
     ;;
@@ -182,19 +182,20 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
 
     let add_question ~template_id ~order question =
       let question_id = Model.Question.uuid question in
-      let mapping_id = Uuidm.create `V4 |> Uuidm.to_string in
+      let mapping_id = Uuidm.v `V4 |> Uuidm.to_string in
       Sihl.Database.transaction (fun connection ->
-          let* () = Repo.Questionnaire.create_question ~connection ~question in
-          let* () =
-            Repo.Questionnaire.create_mapping
-              ~connection
-              ~id:mapping_id
-              ~template_id
-              ~question_id
-              ~order
-              ~is_required:(Model.Question.is_required question)
-          in
-          Lwt.return question_id)
+        let* () = Repo.Questionnaire.create_question ~connection ~question () in
+        let* () =
+          Repo.Questionnaire.create_mapping
+            ~connection
+            ~id:mapping_id
+            ~template_id
+            ~question_id
+            ~order
+            ~is_required:(Model.Question.is_required question)
+            ()
+        in
+        Lwt.return question_id)
     ;;
 
     let delete_asset_answer ~questionnaire_id ~question_id =

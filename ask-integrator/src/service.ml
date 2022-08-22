@@ -41,7 +41,7 @@ module type Sig = sig
 
   module Internal__ : sig
     (** USE ON YOUR OWN RISK -- Internal__ functions are used for testing *)
-    val clean : unit -> unit Lwt.t
+    val clean : ?ctx:(string * string) list -> unit -> unit Lwt.t
   end
 
   val register : unit -> Sihl.Container.Service.t
@@ -72,9 +72,9 @@ module Make (Repo : Repository.Sig) (AskService : Ask.Sig) = struct
           Lwt.return (Ok handler))
         (fun exn ->
           Logs.err (fun m ->
-              m
-                "An error occurred inserting ask integrator handler: %s"
-                (Printexc.to_string exn));
+            m
+              "An error occurred inserting ask integrator handler: %s"
+              (Printexc.to_string exn));
           Lwt.return
             (Error
                "Persisting the ask integrator mappers in the database failed, please try \
@@ -99,8 +99,8 @@ module Make (Repo : Repository.Sig) (AskService : Ask.Sig) = struct
           (Model.Handler.questionnaires handler)
       in
       (match questionnaire with
-      | None -> Lwt.return_none
-      | Some (_, questionnaire) -> Lwt.return_some questionnaire)
+       | None -> Lwt.return_none
+       | Some (_, questionnaire) -> Lwt.return_some questionnaire)
   ;;
 
   let update handler ?member_label ?questionnaires () =
@@ -131,5 +131,6 @@ module Make (Repo : Repository.Sig) (AskService : Ask.Sig) = struct
     Sihl.Container.Service.create lifecycle
   ;;
 end
+[@@warning "-60"]
 
 module MariaDb = Make (Repository.MariaDb) (Ask.MariaDb)

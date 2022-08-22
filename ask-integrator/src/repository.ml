@@ -1,7 +1,7 @@
 open Lwt.Syntax
 
 module type Sig = sig
-  val clean : unit -> unit Lwt.t
+  val clean : ?ctx:(string * string) list -> unit -> unit Lwt.t
   val register_cleaner : unit -> unit
   val register_migration : unit -> unit
   val lifecycles : Sihl.Container.lifecycle list
@@ -48,31 +48,32 @@ module MariaDb = struct
 
   module DbUtils = struct
     let set_fk_check_request =
-      Caqti_request.exec Caqti_type.bool "SET FOREIGN_KEY_CHECKS = ?;"
+      let open Caqti_request.Infix in
+      Caqti_type.(bool ->. unit) "SET FOREIGN_KEY_CHECKS = ?"
     ;;
 
     let with_disabled_fk_check f =
       Sihl.Database.query (fun connection ->
-          let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-          let* () =
-            Connection.exec set_fk_check_request false |> Lwt.map raise_caqti_error
-          in
-          Lwt.finalize
-            (fun () -> f connection)
-            (fun () ->
-              Connection.exec set_fk_check_request true |> Lwt.map raise_caqti_error))
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        let* () =
+          Connection.exec set_fk_check_request false |> Lwt.map raise_caqti_error
+        in
+        Lwt.finalize
+          (fun () -> f connection)
+          (fun () ->
+            Connection.exec set_fk_check_request true |> Lwt.map raise_caqti_error))
     ;;
 
     let find request id =
       Sihl.Database.query (fun connection ->
-          let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-          Connection.find_opt request id |> Lwt.map raise_caqti_error)
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.find_opt request id |> Lwt.map raise_caqti_error)
     ;;
 
     let find_exn request id =
       Sihl.Database.query (fun connection ->
-          let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-          Connection.find request id |> Lwt.map raise_caqti_error)
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        Connection.find request id |> Lwt.map raise_caqti_error)
     ;;
 
     module Dynparam = struct
@@ -100,10 +101,11 @@ module MariaDb = struct
     ;;
 
     let is_unique_request table_name sql_filter request_types sql_joins with_id () =
+      let open Caqti_request.Infix in
       let sql_request =
         is_unique_request_query table_name sql_joins sql_filter with_id ()
       in
-      Caqti_request.find ~oneshot:true request_types Caqti_type.bool sql_request
+      (request_types ->! Caqti_type.bool) ~oneshot:true sql_request
     ;;
 
     let is_unique connection table_name ~sql_filter ~values ?sql_joins ?id () =
@@ -129,83 +131,81 @@ module MariaDb = struct
 
   let is_unique ~member_id ~member_label ?id () =
     Sihl.Database.query (fun connection ->
-        let table_name = "ask_integration_service_mappings" in
-        let sql_filter = "member_uuid = ? AND member_label = ?" in
-        let values =
-          DbUtils.Dynparam.empty
-          |> DbUtils.Dynparam.add Caqti_type.string member_id
-          |> DbUtils.Dynparam.add Caqti_type.string member_label
-        in
-        DbUtils.is_unique connection table_name ~sql_filter ~values ?id ())
+      let table_name = "ask_integration_service_mappings" in
+      let sql_filter = "member_uuid = ? AND member_label = ?" in
+      let values =
+        DbUtils.Dynparam.empty
+        |> DbUtils.Dynparam.add Caqti_type.string member_id
+        |> DbUtils.Dynparam.add Caqti_type.string member_label
+      in
+      DbUtils.is_unique connection table_name ~sql_filter ~values ?id ())
   ;;
 
   let find_service_map_request =
-    Caqti_request.find
-      Caqti_type.string
-      Model.ServiceMappingRow.t
-      {sql|
-          SELECT
-            LOWER(CONCAT(
-              SUBSTR(HEX(uuid), 1, 8), '-',
-              SUBSTR(HEX(uuid), 9, 4), '-',
-              SUBSTR(HEX(uuid), 13, 4), '-',
-              SUBSTR(HEX(uuid), 17, 4), '-',
-              SUBSTR(HEX(uuid), 21)
-            )),
-            LOWER(CONCAT(
-              SUBSTR(HEX(member_uuid), 1, 8), '-',
-              SUBSTR(HEX(member_uuid), 9, 4), '-',
-              SUBSTR(HEX(member_uuid), 13, 4), '-',
-              SUBSTR(HEX(member_uuid), 17, 4), '-',
-              SUBSTR(HEX(member_uuid), 21)
-            )),
-            member_label,
-            created_at
-          FROM ask_integration_service_mappings
-          WHERE uuid = UNHEX(REPLACE(?, '-', ''))
-        |sql}
+    let open Caqti_request.Infix in
+    {sql|
+      SELECT
+        LOWER(CONCAT(
+          SUBSTR(HEX(uuid), 1, 8), '-',
+          SUBSTR(HEX(uuid), 9, 4), '-',
+          SUBSTR(HEX(uuid), 13, 4), '-',
+          SUBSTR(HEX(uuid), 17, 4), '-',
+          SUBSTR(HEX(uuid), 21)
+        )),
+        LOWER(CONCAT(
+          SUBSTR(HEX(member_uuid), 1, 8), '-',
+          SUBSTR(HEX(member_uuid), 9, 4), '-',
+          SUBSTR(HEX(member_uuid), 13, 4), '-',
+          SUBSTR(HEX(member_uuid), 17, 4), '-',
+          SUBSTR(HEX(member_uuid), 21)
+        )),
+        member_label,
+        created_at
+      FROM ask_integration_service_mappings
+      WHERE uuid = UNHEX(REPLACE(?, '-', ''))
+    |sql}
+    |> Caqti_type.string ->! Model.ServiceMappingRow.t
   ;;
 
   let find_service_map = DbUtils.find find_service_map_request
   let find_service_map_exn = DbUtils.find_exn find_service_map_request
 
   let find_service_map_by_member_request =
-    Caqti_request.find
-      Caqti_type.(tup2 string string)
-      Model.ServiceMappingRow.t
-      {sql|
-        SELECT
-          LOWER(CONCAT(
-            SUBSTR(HEX(uuid), 1, 8), '-',
-            SUBSTR(HEX(uuid), 9, 4), '-',
-            SUBSTR(HEX(uuid), 13, 4), '-',
-            SUBSTR(HEX(uuid), 17, 4), '-',
-            SUBSTR(HEX(uuid), 21)
-          )),
-          LOWER(CONCAT(
-            SUBSTR(HEX(member_uuid), 1, 8), '-',
-            SUBSTR(HEX(member_uuid), 9, 4), '-',
-            SUBSTR(HEX(member_uuid), 13, 4), '-',
-            SUBSTR(HEX(member_uuid), 17, 4), '-',
-            SUBSTR(HEX(member_uuid), 21)
-          )),
-          member_label,
-          created_at
-        FROM ask_integration_service_mappings
-        WHERE member_uuid = UNHEX(REPLACE(?, '-', '')) AND member_label = ?
-      |sql}
+    let open Caqti_request.Infix in
+    {sql|
+      SELECT
+        LOWER(CONCAT(
+          SUBSTR(HEX(uuid), 1, 8), '-',
+          SUBSTR(HEX(uuid), 9, 4), '-',
+          SUBSTR(HEX(uuid), 13, 4), '-',
+          SUBSTR(HEX(uuid), 17, 4), '-',
+          SUBSTR(HEX(uuid), 21)
+        )),
+        LOWER(CONCAT(
+          SUBSTR(HEX(member_uuid), 1, 8), '-',
+          SUBSTR(HEX(member_uuid), 9, 4), '-',
+          SUBSTR(HEX(member_uuid), 13, 4), '-',
+          SUBSTR(HEX(member_uuid), 17, 4), '-',
+          SUBSTR(HEX(member_uuid), 21)
+        )),
+        member_label,
+        created_at
+      FROM ask_integration_service_mappings
+      WHERE member_uuid = UNHEX(REPLACE(?, '-', '')) AND member_label = ?
+    |sql}
+    |> Caqti_type.(tup2 string string) ->! Model.ServiceMappingRow.t
   ;;
 
   let find_service_map_by_member = DbUtils.find find_service_map_by_member_request
   let find_service_map_by_member_exn = DbUtils.find_exn find_service_map_by_member_request
 
   let update_service_map_request =
-    Caqti_request.exec
-      Caqti_type.(tup2 string string)
+    let open Caqti_request.Infix in
+    Caqti_type.(tup2 string string ->. unit)
       {sql|
         UPDATE ask_integration_service_mappings
         SET member_label = $2
-        WHERE uuid = UNHEX(REPLACE($1, '-', ''));
+        WHERE uuid = UNHEX(REPLACE($1, '-', ''))
       |sql}
   ;;
 
@@ -213,149 +213,147 @@ module MariaDb = struct
     let id = Model.ServiceMappingRow.id model in
     let label = Model.ServiceMappingRow.member_label model in
     Sihl.Database.query (fun connection ->
-        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec update_service_map_request (id, label)
-        |> Lwt.map raise_caqti_error)
+      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+      Connection.exec update_service_map_request (id, label) |> Lwt.map raise_caqti_error)
   ;;
 
   let delete_service_map_request =
-    Caqti_request.exec
-      Caqti_type.string
+    let open Caqti_request.Infix in
+    Caqti_type.(string ->. unit)
       {sql|
-          DELETE FROM ask_integration_service_mappings
-          WHERE uuid = UNHEX(REPLACE(?, '-', ''));
-        |sql}
+        DELETE FROM ask_integration_service_mappings
+        WHERE uuid = UNHEX(REPLACE(?, '-', ''))
+      |sql}
   ;;
 
   let delete_service_map model =
     let id = Model.ServiceMappingRow.id model in
     Sihl.Database.query (fun connection ->
-        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec delete_service_map_request id |> Lwt.map raise_caqti_error)
+      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+      Connection.exec delete_service_map_request id |> Lwt.map raise_caqti_error)
   ;;
 
   let find_questionnaires_request =
-    Caqti_request.collect
-      Caqti_type.string
-      Model.QuestionnaireMappingRow.t
-      {sql|
-          SELECT
-          LOWER(CONCAT(
-              SUBSTR(HEX(service_map.uuid), 1, 8), '-',
-              SUBSTR(HEX(service_map.uuid), 9, 4), '-',
-              SUBSTR(HEX(service_map.uuid), 13, 4), '-',
-              SUBSTR(HEX(service_map.uuid), 17, 4), '-',
-              SUBSTR(HEX(service_map.uuid), 21)
-            )),
-            ask_map.questionnaire_label,
-            LOWER(CONCAT(
-              SUBSTR(HEX(ask_map.questionnaire), 1, 8), '-',
-              SUBSTR(HEX(ask_map.questionnaire), 9, 4), '-',
-              SUBSTR(HEX(ask_map.questionnaire), 13, 4), '-',
-              SUBSTR(HEX(ask_map.questionnaire), 17, 4), '-',
-              SUBSTR(HEX(ask_map.questionnaire), 21)
-            )),
-            ask_map.created_at,
-            ask_map.updated_at
-          FROM ask_integration_questionnaire_mappings AS ask_map
-          LEFT JOIN ask_integration_service_mappings AS service_map
-            ON service_map.id = ask_map.ask_integration_service_mapping
-          WHERE service_map.uuid = UNHEX(REPLACE(?, '-', ''))
-        |sql}
+    let open Caqti_request.Infix in
+    {sql|
+      SELECT
+      LOWER(CONCAT(
+          SUBSTR(HEX(service_map.uuid), 1, 8), '-',
+          SUBSTR(HEX(service_map.uuid), 9, 4), '-',
+          SUBSTR(HEX(service_map.uuid), 13, 4), '-',
+          SUBSTR(HEX(service_map.uuid), 17, 4), '-',
+          SUBSTR(HEX(service_map.uuid), 21)
+        )),
+        ask_map.questionnaire_label,
+        LOWER(CONCAT(
+          SUBSTR(HEX(ask_map.questionnaire), 1, 8), '-',
+          SUBSTR(HEX(ask_map.questionnaire), 9, 4), '-',
+          SUBSTR(HEX(ask_map.questionnaire), 13, 4), '-',
+          SUBSTR(HEX(ask_map.questionnaire), 17, 4), '-',
+          SUBSTR(HEX(ask_map.questionnaire), 21)
+        )),
+        ask_map.created_at,
+        ask_map.updated_at
+      FROM ask_integration_questionnaire_mappings AS ask_map
+      LEFT JOIN ask_integration_service_mappings AS service_map
+        ON service_map.id = ask_map.ask_integration_service_mapping
+      WHERE service_map.uuid = UNHEX(REPLACE(?, '-', ''))
+    |sql}
+    |> Caqti_type.string ->* Model.QuestionnaireMappingRow.t
   ;;
 
   let find_questionnaires id =
     Sihl.Database.query (fun connection ->
-        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.collect_list find_questionnaires_request id
-        |> Lwt.map raise_caqti_error)
+      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+      Connection.collect_list find_questionnaires_request id |> Lwt.map raise_caqti_error)
   ;;
 
   let insert_service_mapping_request =
-    Caqti_request.exec
-      Model.ServiceMappingRow.t
-      {sql|
-        INSERT INTO ask_integration_service_mappings (
-          uuid,
-          member_uuid,
-          member_label,
-          created_at
-        ) VALUES (
-          UNHEX(REPLACE($1, '-', '')),
-          UNHEX(REPLACE($2, '-', '')),
-          $3,
-          $4
-        )
-      |sql}
+    let open Caqti_request.Infix in
+    {sql|
+      INSERT INTO ask_integration_service_mappings (
+        uuid,
+        member_uuid,
+        member_label,
+        created_at
+      ) VALUES (
+        UNHEX(REPLACE($1, '-', '')),
+        UNHEX(REPLACE($2, '-', '')),
+        $3,
+        $4
+      )
+    |sql}
+    |> Model.ServiceMappingRow.t ->. Caqti_type.unit
   ;;
 
   let insert_questionnaire_mapping_request =
-    Caqti_request.exec
-      Model.QuestionnaireMappingRow.t
-      {sql|
-          INSERT INTO ask_integration_questionnaire_mappings (
-            ask_integration_service_mapping,
-            questionnaire_label,
-            questionnaire,
-            created_at,
-            updated_at
-            ) VALUES (
-            (SELECT id FROM ask_integration_service_mappings WHERE uuid = UNHEX(REPLACE($1, '-', ''))),
-            $2,
-            UNHEX(REPLACE($3, '-', '')),
-            $4,
-            $5
-          )
-        |sql}
+    let open Caqti_request.Infix in
+    {sql|
+        INSERT INTO ask_integration_questionnaire_mappings (
+          ask_integration_service_mapping,
+          questionnaire_label,
+          questionnaire,
+          created_at,
+          updated_at
+          ) VALUES (
+          (SELECT id FROM ask_integration_service_mappings WHERE uuid = UNHEX(REPLACE($1, '-', ''))),
+          $2,
+          UNHEX(REPLACE($3, '-', '')),
+          $4,
+          $5
+        )
+      |sql}
+    |> Model.QuestionnaireMappingRow.t ->. Caqti_type.unit
   ;;
 
   let insert_questionnaire_mapping model =
     Sihl.Database.query (fun connection ->
-        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec insert_questionnaire_mapping_request model
-        |> Lwt.map raise_caqti_error)
+      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+      Connection.exec insert_questionnaire_mapping_request model
+      |> Lwt.map raise_caqti_error)
   ;;
 
   let update_questionnaire_mapping_request =
-    Caqti_request.exec
-      Caqti_type.(tup2 string string)
-      {sql|
-        UPDATE ask_integration_questionnaire_mappings
-        SET questionnaire_label = $2
-        WHERE id = (SELECT id FROM ask_integration_service_mappings WHERE uuid = UNHEX(REPLACE($1, '-', '')));
-      |sql}
+    let open Caqti_request.Infix in
+    {sql|
+      UPDATE ask_integration_questionnaire_mappings
+      SET questionnaire_label = $2
+      WHERE id = (SELECT id FROM ask_integration_service_mappings WHERE uuid = UNHEX(REPLACE($1, '-', '')));
+    |sql}
+    |> Caqti_type.(tup2 string string ->. unit)
   ;;
 
   let update_questionnaire_mapping model =
     let id = Model.QuestionnaireMappingRow.service_mapper model in
     let label = Model.QuestionnaireMappingRow.label model in
     Sihl.Database.query (fun connection ->
-        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec update_questionnaire_mapping_request (id, label)
-        |> Lwt.map raise_caqti_error)
+      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+      Connection.exec update_questionnaire_mapping_request (id, label)
+      |> Lwt.map raise_caqti_error)
   ;;
 
   let delete_questionnaire_mapping_request =
-    Caqti_request.exec
-      Caqti_type.(tup2 string string)
-      {sql|
-          DELETE FROM ask_integration_questionnaire_mappings
-          WHERE
-            id = (SELECT id FROM ask_integration_service_mappings WHERE uuid = UNHEX(REPLACE(?, '-', '')))
-            AND questionnaire = UNHEX(REPLACE(?, '-', ''));
-        |sql}
+    let open Caqti_request.Infix in
+    {sql|
+      DELETE FROM ask_integration_questionnaire_mappings
+      WHERE
+        id = (SELECT id FROM ask_integration_service_mappings WHERE uuid = UNHEX(REPLACE(?, '-', '')))
+        AND questionnaire = UNHEX(REPLACE(?, '-', ''))
+    |sql}
+    |> Caqti_type.(tup2 string string ->. unit)
   ;;
 
   let delete_questionnaire_mapping model =
     let id = Model.QuestionnaireMappingRow.service_mapper model in
     let questionnaire = Model.QuestionnaireMappingRow.questionnaire model in
     Sihl.Database.query (fun connection ->
-        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        Connection.exec delete_questionnaire_mapping_request (id, questionnaire)
-        |> Lwt.map raise_caqti_error)
+      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+      Connection.exec delete_questionnaire_mapping_request (id, questionnaire)
+      |> Lwt.map raise_caqti_error)
   ;;
 
   let row_to_quetionnaire_mapper (model : Model.QuestionnaireMappingRow.t) =
+    let open Model.QuestionnaireMappingRow in
     let* questionnaire = Ask.MariaDb.Questionnaire.find model.questionnaire in
     match questionnaire with
     | Some questionnaire ->
@@ -407,21 +405,22 @@ module MariaDb = struct
     let open Lwt_result.Syntax in
     let service_mapper, questionnaire_mappers = Model.Handler.to_models model in
     Sihl.Database.transaction' (fun connection ->
-        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-        let* () = Connection.exec insert_service_mapping_request service_mapper in
-        List.fold_left
-          (fun result questionnaire_map ->
-            let* () = result in
-            let model =
-              questionnaire_map
-              |> Model.QuestionnaireMapping.to_mapping_row ~id:service_mapper.id
-            in
-            Connection.exec insert_questionnaire_mapping_request model)
-          (Lwt_result.return ())
-          questionnaire_mappers)
+      let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+      let* () = Connection.exec insert_service_mapping_request service_mapper in
+      List.fold_left
+        (fun result questionnaire_map ->
+          let* () = result in
+          let model =
+            questionnaire_map
+            |> Model.QuestionnaireMapping.to_mapping_row
+                 ~id:service_mapper.Model.ServiceMappingRow.id
+          in
+          Connection.exec insert_questionnaire_mapping_request model)
+        (Lwt_result.return ())
+        questionnaire_mappers)
   ;;
 
-  let update model ?member_label ?questionnaires () =
+  let[@warning "-40"] update model ?member_label ?questionnaires () =
     if Option.is_none member_label && Option.is_none questionnaires
     then
       Lwt.return
@@ -463,6 +462,7 @@ module MariaDb = struct
           in
           (* 2. Update or create all other questionnaire mapper *)
           let* _ =
+            let open Model.QuestionnaireMapping in
             Lwt_list.map_s
               (fun (label, questionnaire) ->
                 let questionnaire_id = Ask.Model.Questionnaire.uuid questionnaire in
@@ -479,9 +479,7 @@ module MariaDb = struct
                 match existing_questionnaire_mapper with
                 | Some mapper ->
                   update_questionnaire_mapping
-                    (Model.QuestionnaireMapping.to_mapping_row
-                       ~id:handler_id
-                       { mapper with label })
+                    (to_mapping_row ~id:handler_id { mapper with label })
                 | None ->
                   let mapper =
                     Model.QuestionnaireMappingRow.create
@@ -504,23 +502,23 @@ module MariaDb = struct
   ;;
 
   let clean_questionnaire_mappings_request =
-    Caqti_request.exec
-      Caqti_type.unit
-      "TRUNCATE TABLE ask_integration_questionnaire_mappings;"
+    let open Caqti_request.Infix in
+    Caqti_type.(unit ->. unit) "TRUNCATE TABLE ask_integration_questionnaire_mappings"
   ;;
 
   let clean_questionnaire_mappings = DbUtils.clean clean_questionnaire_mappings_request
 
   let clean_service_mappings_request =
-    Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE ask_integration_service_mappings;"
+    let open Caqti_request.Infix in
+    Caqti_type.(unit ->. unit) "TRUNCATE TABLE ask_integration_service_mappings"
   ;;
 
   let clean_service_mappings = DbUtils.clean clean_service_mappings_request
 
-  let clean () =
+  let clean ?ctx:_ () =
     DbUtils.with_disabled_fk_check (fun connection ->
-        let* () = clean_questionnaire_mappings connection in
-        clean_service_mappings connection)
+      let* () = clean_questionnaire_mappings connection in
+      clean_service_mappings connection)
   ;;
 
   let register_migration () =

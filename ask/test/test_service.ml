@@ -19,7 +19,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
     let* questionnaire_id =
       Questionnaire.instantiate_questionnaire
         ~template_id
-        ~questionnaire_id:(Uuidm.create `V4 |> Uuidm.to_string)
+        ~questionnaire_id:(Uuidm.v `V4 |> Uuidm.to_string)
     in
     let* questionnaire =
       Questionnaire.find questionnaire_id
@@ -46,7 +46,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
     let* questionnaire =
       Seed.AttributeTest.questionnaire ~label:"foobar" |> Lwt.map CCResult.get_or_failwith
     in
-    let template_id = Uuidm.create `V4 |> Uuidm.to_string in
+    let template_id = Uuidm.v `V4 |> Uuidm.to_string in
     let* _ =
       Questionnaire.add_question
         ~template_id:(Model.Questionnaire.template_uuid questionnaire)
@@ -129,7 +129,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
       |> Lwt.map (Option.to_result ~none:"No questionnaire found")
       |> Lwt.map CCResult.get_or_failwith
     in
-    let file_id, filename, filesize, mime =
+    let[@warning "-4"] file_id, filename, filesize, mime =
       match Model.Questionnaire.questions questionnaire with
       | [ _
         ; _
@@ -152,7 +152,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
       "has answered mime"
       "application/pdf"
       mime;
-    let* file = StorageService.find ~id:file_id in
+    let* file = StorageService.find file_id in
     let* file_content = StorageService.download_data_base64 file in
     (let open Alcotest in
     check string)
@@ -177,7 +177,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
       |> Lwt.map (Option.to_result ~none:"No questionnaire found")
       |> Lwt.map CCResult.get_or_failwith
     in
-    let actual_answer1, actual_answer2 =
+    let[@warning "-4"] actual_answer1, actual_answer2 =
       match Model.Questionnaire.questions questionnaire with
       | [ (_, Some (Model.AnswerInput.Text actual_answer1))
         ; (_, Some (Model.AnswerInput.Text actual_answer2))
@@ -216,7 +216,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
       |> Lwt.map (Option.to_result ~none:"No questionnaire found")
       |> Lwt.map CCResult.get_or_failwith
     in
-    let file_id, filename, filesize, mime =
+    let[@warning "-4"] file_id, filename, filesize, mime =
       match Model.Questionnaire.questions questionnaire with
       | [ _
         ; _
@@ -239,7 +239,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
       "has answered mime"
       "application/pdf"
       mime;
-    let* file = StorageService.find ~id:file_id in
+    let* file = StorageService.find file_id in
     let* file_content = StorageService.download_data_base64 file in
     (let open Alcotest in
     check string)
@@ -263,7 +263,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
       |> Lwt.map Model.Questionnaire.uuid
     in
     let* () = Questionnaire.delete_asset_answer ~questionnaire_id ~question_id in
-    let file_id, _, _, _ =
+    let[@warning "-4"] file_id, _, _, _ =
       match Model.Questionnaire.questions questionnaire with
       | [ _
         ; _
@@ -271,7 +271,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
         ] -> uuid, filename, filesize, mime
       | _ -> failwith "Unexpected questions"
     in
-    let* file = StorageService.find_opt ~id:file_id in
+    let* file = StorageService.find_opt file_id in
     let () =
       match file with
       | Some _ -> Alcotest.fail "File should have been deleted"

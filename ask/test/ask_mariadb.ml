@@ -87,7 +87,7 @@ let suite =
 let services =
   [ TestService.register ()
   ; Database.register ()
-  ; Migration.register ()
+  ; Migration.register []
   ; Storage.register ()
   ]
 ;;

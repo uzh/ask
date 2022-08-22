@@ -3,7 +3,7 @@ module Integrator = Ask_integrator
 module Model = Integrator.Model
 module TestSeed = Test_seed
 
-let create_uuid () = Uuidm.create `V4 |> Uuidm.to_string
+let create_uuid () = Uuidm.v `V4 |> Uuidm.to_string
 
 let testable_questionnaire =
   Alcotest.testable Ask.Model.Questionnaire.pp Ask.Model.Questionnaire.equal
@@ -44,7 +44,7 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
         (pair (pair string string) (list (pair string testable_questionnaire)))
         "created handler"
         ((member_id, member_label), [ questionnaire_label, questionnaire ])
-        ((handler.member_id, handler.label), handler.questionnaires));
+        Model.Handler.((handler.member_id, handler.label), handler.questionnaires));
     Lwt.return_unit
   ;;
 

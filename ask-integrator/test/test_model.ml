@@ -1,6 +1,6 @@
 module Model = Ask_integrator.Model
 
-let create_uuid () = Uuidm.create `V4 |> Uuidm.to_string
+let create_uuid () = Uuidm.v `V4 |> Uuidm.to_string
 let testable_handler = Alcotest.testable Model.Handler.pp Model.Handler.equal
 
 let testable_service_mapper =
@@ -32,7 +32,8 @@ let create_service_mapper _ () =
       (triple string string string)
       "correct model fields"
       (id, member_id, member_label)
-      (service_mapper.id, service_mapper.member_id, service_mapper.member_label));
+      Model.ServiceMappingRow.(
+        service_mapper.id, service_mapper.member_id, service_mapper.member_label));
   Lwt.return_unit
 ;;
 
@@ -48,7 +49,8 @@ let create_questionnaire_mapping_row _ () =
       (triple string string string)
       "correct model fields"
       (service_mapper, label, questionnaire)
-      (model.service_mapper, model.label, model.questionnaire));
+      Model.QuestionnaireMappingRow.(
+        model.service_mapper, model.label, model.questionnaire));
   Lwt.return_unit
 ;;
 
@@ -76,7 +78,7 @@ let create_questionnaire_mapping _ () =
       (pair string testable_questionnaire)
       "correct model fields"
       (label, questionnaire)
-      (model.label, model.questionnaire));
+      Model.QuestionnaireMapping.(model.label, model.questionnaire));
   Lwt.return_unit
 ;;
 
@@ -126,7 +128,7 @@ let create_handler _ () =
       (pair (triple string string string) (list (pair string testable_questionnaire)))
       "check handler model"
       ((id, member_id, label), questionnaires)
-      ((model.id, model.member_id, model.label), model.questionnaires));
+      Model.Handler.((model.id, model.member_id, model.label), model.questionnaires));
   Lwt.return_unit
 ;;
 

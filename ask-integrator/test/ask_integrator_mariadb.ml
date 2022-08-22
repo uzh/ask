@@ -49,7 +49,7 @@ let services =
   ; AskService.register ()
   ; Storage.register ()
   ; Database.register ()
-  ; Migration.register ()
+  ; Migration.register []
   ]
 ;;
 

@@ -115,15 +115,15 @@ module Handler = struct
   ;;
 
   let create
-      ?id
-      ~member_id
-      ?label
-      ~(questionnaires : (string * Ask.Model.Questionnaire.t) list)
-      ?created_at
-      ?updated_at
-      ()
+    ?id
+    ~member_id
+    ?label
+    ~(questionnaires : (string * Ask.Model.Questionnaire.t) list)
+    ?created_at
+    ?updated_at
+    ()
     =
-    { id = id |> Option.value ~default:(Uuidm.create `V4 |> Uuidm.to_string)
+    { id = id |> Option.value ~default:(Uuidm.v `V4 |> Uuidm.to_string)
     ; member_id
     ; label = label |> Option.value ~default:""
     ; questionnaires
@@ -133,9 +133,11 @@ module Handler = struct
   ;;
 
   let create_from_models
-      ~(service_mapper : ServiceMappingRow.t)
-      ~(questionnaire_mapper : QuestionnaireMapping.t list)
+    ~(service_mapper : ServiceMappingRow.t)
+    ~(questionnaire_mapper : QuestionnaireMapping.t list)
     =
+    let open QuestionnaireMapping in
+    let open ServiceMappingRow in
     let rec newest = function
       | [] -> Ptime_clock.now ()
       | [ x ] -> x

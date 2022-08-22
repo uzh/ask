@@ -94,7 +94,7 @@ module Question = struct
     | Year (_, _, _, text, _) -> text
   ;;
 
-  let label question =
+  let[@warning "-4"] label question =
     match question with
     | Text (_, Some label, _, _, _, _, _) -> label
     | Country (_, Some label, _, _, _) -> label
@@ -106,7 +106,7 @@ module Question = struct
     | _ -> text question
   ;;
 
-  let is_file question =
+  let[@warning "-4"] is_file question =
     match question with
     | File (_, _, _, _, _, _, _) -> true
     | _ -> false
@@ -136,19 +136,19 @@ module Question = struct
 
   let validation_error uuid message = Error (Caml.Format.asprintf "%s,%s" uuid message)
 
-  let validate question answer_input =
+  let[@warning "-4"] validate question answer_input =
     match question, answer_input with
     | question, None ->
       (match is_required question with
-      | true -> validation_error (uuid question) "Required"
-      | false -> Ok ())
+       | true -> validation_error (uuid question) "Required"
+       | false -> Ok ())
     | Text (_, _, _, _, _, regex, required), Some (AnswerInput.Text answer) ->
       let regex = Re.Pcre.regexp regex in
       (match CCString.is_empty answer, Re.Pcre.pmatch ~rex:regex answer with
-      | false, true -> Ok ()
-      | true, _ when required -> validation_error (uuid question) "Required"
-      | true, true -> Ok ()
-      | _, false -> validation_error (uuid question) "Invalid value provided")
+       | false, true -> Ok ()
+       | true, _ when required -> validation_error (uuid question) "Required"
+       | true, true -> Ok ()
+       | _, false -> validation_error (uuid question) "Invalid value provided")
     | Country (_, _, _, _, _), Some (AnswerInput.Text answer) ->
       (match
          ( CCString.is_empty answer
@@ -156,40 +156,41 @@ module Question = struct
              (fun (_, country) -> CCString.equal country answer)
              Model_utils.countries )
        with
-      | true, _ -> Ok ()
-      | false, true -> Ok ()
-      | false, false -> validation_error (uuid question) "Invalid value provided")
+       | true, _ -> Ok ()
+       | false, true -> Ok ()
+       | false, false -> validation_error (uuid question) "Invalid value provided")
     | Select (_, _, _, _, options, _), Some (AnswerInput.Text answer) ->
-      (match options |> CCList.find_opt (CCString.equal answer) |> CCOpt.is_some with
-      | true -> Ok ()
-      | false -> validation_error (uuid question) "Please select on of the options")
+      (match options |> CCList.find_opt (CCString.equal answer) |> CCOption.is_some with
+       | true -> Ok ()
+       | false -> validation_error (uuid question) "Please select on of the options")
     | YesNo (_, _, _, _, _), Some (AnswerInput.Text answer) ->
       let regex = Re.Pcre.regexp "^Yes$|^No$" in
       (match Re.Pcre.pmatch ~rex:regex answer with
-      | true -> Ok ()
-      | false -> validation_error (uuid question) "Please answer with 'Yes' or 'No'")
+       | true -> Ok ()
+       | false -> validation_error (uuid question) "Please answer with 'Yes' or 'No'")
     | Year (_, _, _, _, _), Some (AnswerInput.Text answer) ->
       let regex = Re.Pcre.regexp "^(1|2)\\d\\d\\d$" in
       (match Re.Pcre.pmatch ~rex:regex answer with
-      | true -> Ok ()
-      | false -> validation_error (uuid question) "Please enter a year in the format 1999")
+       | true -> Ok ()
+       | false ->
+         validation_error (uuid question) "Please enter a year in the format 1999")
     | Date (_, _, _, _, _), Some (AnswerInput.Text answer) ->
       (* TODO: define allowed type of date, e.g. swiss format *)
       let regex = Re.Pcre.regexp "^(1|2)\\d\\d\\d\\-(0|1)\\d\\-(0|1|2|3)\\d$" in
       (match Re.Pcre.pmatch ~rex:regex answer with
-      | true -> Ok ()
-      | false ->
-        validation_error (uuid question) "Please enter a date in the format 1990-11-25")
+       | true -> Ok ()
+       | false ->
+         validation_error (uuid question) "Please enter a date in the format 1990-11-25")
     | ( File (_, _, _, _, supported_mime_types, max_file_sizeMb, _)
-      , Some (Asset (_, _, size_byte, mime_type, _)) ) ->
+      , Some (AnswerInput.Asset (_, _, size_byte, mime_type, _)) ) ->
       let size_mb = 1 + Int.div size_byte 1000000 in
       (match size_mb <= max_file_sizeMb, CCList.mem mime_type supported_mime_types with
-      | true, true -> Ok ()
-      | false, true ->
-        validation_error
-          (uuid question)
-          (Caml.Format.asprintf "Asset file size too big (max. %d)" max_file_sizeMb)
-      | _, false -> validation_error (uuid question) "Invalid value provided")
+       | true, true -> Ok ()
+       | false, true ->
+         validation_error
+           (uuid question)
+           (Caml.Format.asprintf "Asset file size too big (max. %d)" max_file_sizeMb)
+       | _, false -> validation_error (uuid question) "Invalid value provided")
     | question, _ -> validation_error (uuid question) "Invalid value provided"
   ;;
 
@@ -207,17 +208,17 @@ module QuestionAnswer = struct
   let are_all_required_questions_answered question_input =
     question_input
     |> CCList.for_all (fun (question, answer) ->
-           match Question.is_required question, answer with
-           | true, None -> false
-           | _, _ -> true)
+         match Question.is_required question, answer with
+         | true, None -> false
+         | _, _ -> true)
   ;;
 
   let are_all_answered_questions_valid question_input =
     question_input
     |> CCList.for_all (fun ((question : Question.t), answer) ->
-           match answer with
-           | Some answer -> Question.is_valid question answer
-           | None -> true)
+         match answer with
+         | Some answer -> Question.is_valid question answer
+         | None -> true)
   ;;
 
   let can_questions_answered_get_submitted question_input =
@@ -225,7 +226,7 @@ module QuestionAnswer = struct
     && are_all_answered_questions_valid question_input
   ;;
 
-  let filter_asset_out question_answers =
+  let[@warning "-4"] filter_asset_out question_answers =
     CCList.filter
       (fun (question, _) ->
         match question with
@@ -235,14 +236,14 @@ module QuestionAnswer = struct
   ;;
 
   let update
-      (question_answers : (Question.t * AnswerInput.t) list)
-      (question : Question.t)
-      (answer : AnswerInput.t)
+    (question_answers : (Question.t * AnswerInput.t) list)
+    (question : Question.t)
+    (answer : AnswerInput.t)
     =
     let found_index =
       question_answers
       |> CCList.find_idx (fun (existing_question, _) ->
-             Question.uuid existing_question == Question.uuid question)
+           Question.uuid existing_question == Question.uuid question)
     in
     match found_index with
     | None -> question_answers
@@ -253,7 +254,7 @@ module QuestionAnswer = struct
         question_answers
   ;;
 
-  let event questionnaire_id current updated =
+  let[@warning "-4"] event questionnaire_id current updated =
     match current, updated with
     | (_, Some (AnswerInput.Text _)), (question, Some (AnswerInput.Text new_text)) ->
       Some (Event.TextAnswerUpdated (questionnaire_id, Question.uuid question, new_text))
@@ -293,9 +294,9 @@ module Questionnaire = struct
   let set_question_with_id_to_optional ~question_id ~questions =
     questions
     |> CCList.map (fun (q, a) ->
-           match Question.uuid q == question_id with
-           | true -> set_question_to_optional (q, a)
-           | false -> q, a)
+         match Question.uuid q == question_id with
+         | true -> set_question_to_optional (q, a)
+         | false -> q, a)
   ;;
 
   let set_all_questions_to_optional questionnaire =
@@ -312,14 +313,14 @@ module Questionnaire = struct
             (fun (answer_question, _) -> Question.equal answer_question question)
             answers
         in
-        let answer_input = CCOpt.bind answer (fun (_, answer) -> answer) in
+        let answer_input = CCOption.bind answer (fun (_, answer) -> answer) in
         (match Question.validate question answer_input, answer with
-        | Error msg, _ -> loop questions (CCList.cons msg errors) events
-        | Ok (), Some answer ->
-          (match QuestionAnswer.event questionnaire.uuid current answer with
-          | Some event -> loop questions errors (CCList.cons event events)
-          | None -> loop questions errors events)
-        | Ok (), None -> loop questions errors events)
+         | Error msg, _ -> loop questions (CCList.cons msg errors) events
+         | Ok (), Some answer ->
+           (match QuestionAnswer.event questionnaire.uuid current answer with
+            | Some event -> loop questions errors (CCList.cons event events)
+            | None -> loop questions errors events)
+         | Ok (), None -> loop questions errors events)
       | [] -> events |> CCList.rev, errors |> CCList.rev
     in
     let events, errors =
@@ -328,7 +329,7 @@ module Questionnaire = struct
         let questions =
           questionnaire.questions
           |> List.find_all (fun (questionnaire_question, _) ->
-                 Question.equal questionnaire_question question)
+               Question.equal questionnaire_question question)
         in
         loop questions [] []
       | _ ->

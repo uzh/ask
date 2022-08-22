@@ -9,14 +9,14 @@ module MariaDB () = struct
 
     let with_disabled_fk_check f =
       Sihl.Database.query (fun connection ->
-          let module Connection = (val connection : Caqti_lwt.CONNECTION) in
-          let* () =
-            Connection.exec set_fk_check_request false |> Lwt.map Utils.raise_caqti_error
-          in
-          Lwt.finalize
-            (fun () -> f connection)
-            (fun () ->
-              Connection.exec set_fk_check_request true |> Lwt.map Utils.raise_caqti_error))
+        let module Connection = (val connection : Caqti_lwt.CONNECTION) in
+        let* () =
+          Connection.exec set_fk_check_request false |> Lwt.map Utils.raise_caqti_error
+        in
+        Lwt.finalize
+          (fun () -> f connection)
+          (fun () ->
+            Connection.exec set_fk_check_request true |> Lwt.map Utils.raise_caqti_error))
     ;;
 
     let found_rows_request =
@@ -284,7 +284,7 @@ module MariaDB () = struct
           |> add Caqti_type.string template_question_mapping_id
         in
         Sihl.Database.query (fun connection ->
-            DbUtils.is_unique connection table_name ~sql_filter ~values ?uuid ())
+          DbUtils.is_unique connection table_name ~sql_filter ~values ?uuid ())
       ;;
 
       let clean_request = Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE ask_answers;"
@@ -538,13 +538,13 @@ module MariaDB () = struct
       ;;
     end
 
-    let clean () =
+    let clean ?ctx:_ () =
       DbUtils.with_disabled_fk_check (fun connection ->
-          let* () = QuestionRow.clean connection in
-          let* () = TemplateRow.clean connection in
-          let* () = QuestionnaireRow.clean connection in
-          let* () = Mapping.clean connection in
-          AnswerRow.clean connection)
+        let* () = QuestionRow.clean connection in
+        let* () = TemplateRow.clean connection in
+        let* () = QuestionnaireRow.clean connection in
+        let* () = Mapping.clean connection in
+        AnswerRow.clean connection)
     ;;
   end
 end

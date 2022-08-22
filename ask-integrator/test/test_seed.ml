@@ -10,7 +10,7 @@ module Make (TestService : Ask_integrator.Sig) (AskService : Ask.Sig) = struct
       let* questionnaire_id =
         instantiate_questionnaire
           ~template_id
-          ~questionnaire_id:(Uuidm.create `V4 |> Uuidm.to_string)
+          ~questionnaire_id:(Uuidm.v `V4 |> Uuidm.to_string)
       in
       find questionnaire_id
       |> Lwt.map (Option.to_result ~none:"Seed failed, can not create questionnaire")
@@ -21,7 +21,7 @@ module Make (TestService : Ask_integrator.Sig) (AskService : Ask.Sig) = struct
       let* template_id = create_template ~label () in
       let question1 =
         Model.Question.Text
-          ( Uuidm.create `V4 |> Uuidm.to_string
+          ( Uuidm.v `V4 |> Uuidm.to_string
           , Some "age"
           , None
           , "How old are you?"
@@ -31,7 +31,7 @@ module Make (TestService : Ask_integrator.Sig) (AskService : Ask.Sig) = struct
       in
       let question2 =
         Model.Question.YesNo
-          ( Uuidm.create `V4 |> Uuidm.to_string
+          ( Uuidm.v `V4 |> Uuidm.to_string
           , Some "student"
           , None
           , "Are you a student?"
@@ -39,7 +39,7 @@ module Make (TestService : Ask_integrator.Sig) (AskService : Ask.Sig) = struct
       in
       let question3 =
         Model.Question.File
-          ( Uuidm.create `V4 |> Uuidm.to_string
+          ( Uuidm.v `V4 |> Uuidm.to_string
           , Some "diploma"
           , None
           , "Upload your diploma."
@@ -53,7 +53,7 @@ module Make (TestService : Ask_integrator.Sig) (AskService : Ask.Sig) = struct
       let* questionnaire_id =
         instantiate_questionnaire
           ~template_id
-          ~questionnaire_id:(Uuidm.create `V4 |> Uuidm.to_string)
+          ~questionnaire_id:(Uuidm.v `V4 |> Uuidm.to_string)
       in
       let* questionnaire =
         find questionnaire_id
@@ -92,11 +92,11 @@ module Make (TestService : Ask_integrator.Sig) (AskService : Ask.Sig) = struct
     module Model = Ask_integrator.Model
 
     let ask_integrator_with_one_filled_questionnaire
-        ~member_label
-        ~questionnaire_label
-        ~template_label
+      ~member_label
+      ~questionnaire_label
+      ~template_label
       =
-      let member_id = Uuidm.create `V4 |> Uuidm.to_string in
+      let member_id = Uuidm.v `V4 |> Uuidm.to_string in
       let* questionnaire, _, _, _ =
         QuestTest.questionnaire_with_three_answered_questions ~label:template_label
         |> Lwt.map CCResult.get_or_failwith
