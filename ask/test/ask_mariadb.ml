@@ -94,9 +94,6 @@ let services =
 
 let () =
   let open Lwt.Syntax in
-  Sihl.Configuration.read_string "DATABASE_URL_TEST_MARIADB"
-  |> Option.value ~default:"mariadb://admin:password@127.0.0.1:3306/dev"
-  |> Unix.putenv "DATABASE_URL";
   let () = Logs.set_level (Some Logs.Error) in
   let () = Logs.set_reporter Sihl.Log.default_reporter in
   Lwt_main.run

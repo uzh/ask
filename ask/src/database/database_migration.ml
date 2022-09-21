@@ -19,7 +19,7 @@ module MariaDB = struct
           `updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         UNIQUE KEY `unique_uuid` (`uuid`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       |sql}
   ;;
 
@@ -37,7 +37,7 @@ module MariaDB = struct
         PRIMARY KEY (`id`),
         UNIQUE KEY `unique_uuid` (`uuid`),
         UNIQUE KEY `unique_label` (`label`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       |sql}
   ;;
 
@@ -55,7 +55,7 @@ module MariaDB = struct
         UNIQUE KEY `unique_uuid` (`uuid`),
         KEY `ask_template` (`ask_template`),
         CONSTRAINT `ask_questionnaires_ibfk_1` FOREIGN KEY (`ask_template`) REFERENCES `ask_templates` (`id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       |sql}
   ;;
 
@@ -78,7 +78,7 @@ module MariaDB = struct
         KEY `ask_question` (`ask_question`),
         CONSTRAINT `ask_template_question_mappings_ibfk_1` FOREIGN KEY (`ask_template`) REFERENCES `ask_templates` (`id`),
         CONSTRAINT `ask_template_question_mappings_ibfk_2` FOREIGN KEY (`ask_question`) REFERENCES `ask_questions` (`id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       |sql}
   ;;
 
@@ -103,7 +103,7 @@ module MariaDB = struct
           KEY `storage_handle` (`storage_handle`),
           CONSTRAINT `ask_answers_ibfk_1` FOREIGN KEY (`ask_questionnaire`) REFERENCES `ask_questionnaires` (`id`),
           CONSTRAINT `ask_answers_ibfk_2` FOREIGN KEY (`ask_template_question_mapping`) REFERENCES `ask_template_question_mappings` (`id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       |sql}
   ;;
 

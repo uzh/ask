@@ -318,7 +318,7 @@ module MariaDb = struct
     {sql|
       UPDATE ask_integration_questionnaire_mappings
       SET questionnaire_label = $2
-      WHERE id = (SELECT id FROM ask_integration_service_mappings WHERE uuid = UNHEX(REPLACE($1, '-', '')));
+      WHERE id = (SELECT id FROM ask_integration_service_mappings WHERE uuid = UNHEX(REPLACE($1, '-', '')))
     |sql}
     |> Caqti_type.(tup2 string string ->. unit)
   ;;

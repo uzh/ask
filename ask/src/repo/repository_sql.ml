@@ -1,13 +1,14 @@
-open Lwt.Syntax
 module Utils = Repository_utils
 
 module MariaDB () = struct
   module DbUtils = struct
     let set_fk_check_request =
-      Caqti_request.exec Caqti_type.bool "SET FOREIGN_KEY_CHECKS = ?;"
+      let open Caqti_request.Infix in
+      Caqti_type.(bool ->. unit) "SET FOREIGN_KEY_CHECKS = ?"
     ;;
 
     let with_disabled_fk_check f =
+      let open Lwt.Syntax in
       Sihl.Database.query (fun connection ->
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
         let* () =
@@ -20,31 +21,31 @@ module MariaDB () = struct
     ;;
 
     let found_rows_request =
-      Caqti_request.find Caqti_type.unit Caqti_type.int "SELECT FOUND_ROWS()"
+      let open Caqti_request.Infix in
+      Caqti_type.(unit ->! int) "SELECT FOUND_ROWS()"
     ;;
 
     let is_unique_request table_name sql_filter request_types sql_joins =
-      let sql_request =
-        Caml.Format.asprintf
-          {sql|
-            SELECT NOT EXISTS (
-              SELECT 1
-              FROM %s
-                %s
-              WHERE %s
-            )
-          |sql}
-          table_name
-          sql_joins
-          sql_filter
-      in
-      Caqti_request.find request_types Caqti_type.bool sql_request
+      let open Caqti_request.Infix in
+      Caml.Format.asprintf
+        {sql|
+          SELECT NOT EXISTS (
+            SELECT 1
+            FROM %s
+              %s
+            WHERE %s
+          )
+        |sql}
+        table_name
+        sql_joins
+        sql_filter
+      |> request_types ->! Caqti_type.bool
     ;;
 
     let is_unique_with_uuid_request table_name sql_filter request_types sql_joins =
-      let sql_request =
-        Caml.Format.asprintf
-          {sql|
+      let open Caqti_request.Infix in
+      Caml.Format.asprintf
+        {sql|
           SELECT NOT EXISTS (
             SELECT 1
             FROM %s
@@ -54,17 +55,16 @@ module MariaDB () = struct
               AND %s.uuid != UNHEX(REPLACE(?, '-', ''))
             LIMIT 1
           )
-          |sql}
-          table_name
-          sql_joins
-          sql_filter
-          table_name
-      in
-      Caqti_request.find ~oneshot:true request_types Caqti_type.bool sql_request
+        |sql}
+        table_name
+        sql_joins
+        sql_filter
+        table_name
+      |> (request_types ->! Caqti_type.bool) ~oneshot:true
     ;;
 
     let is_unique connection table_name ~sql_filter ~values ?sql_joins ?uuid () =
-      let sql_joins = sql_joins |> Option.value ~default:"" in
+      let sql_joins = sql_joins |> CCOption.value ~default:"" in
       let module Connection = (val connection : Caqti_lwt.CONNECTION) in
       match uuid with
       | None ->
@@ -86,30 +86,29 @@ module MariaDB () = struct
 
     module QuestionRow = struct
       let find_request =
-        Caqti_request.find
-          Caqti_type.string
-          Model.QuestionRow.t
-          {sql|
-            SELECT
-              LOWER(CONCAT(
-                SUBSTR(HEX(uuid), 1, 8), '-',
-                SUBSTR(HEX(uuid), 9, 4), '-',
-                SUBSTR(HEX(uuid), 13, 4), '-',
-                SUBSTR(HEX(uuid), 17, 4), '-',
-                SUBSTR(HEX(uuid), 21)
-              )),
-              label,
-              help_text,
-              text,
-              default_value,
-              validation_regex,
-              question_type,
-              max_file_size_mb,
-              mime_types,
-              possible_options
-            FROM ask_questions
-            WHERE uuid = UNHEX(REPLACE(?, '-', ''))
-          |sql}
+        let open Caqti_request.Infix in
+        {sql|
+          SELECT
+            LOWER(CONCAT(
+              SUBSTR(HEX(uuid), 1, 8), '-',
+              SUBSTR(HEX(uuid), 9, 4), '-',
+              SUBSTR(HEX(uuid), 13, 4), '-',
+              SUBSTR(HEX(uuid), 17, 4), '-',
+              SUBSTR(HEX(uuid), 21)
+            )),
+            label,
+            help_text,
+            text,
+            default_value,
+            validation_regex,
+            question_type,
+            max_file_size_mb,
+            mime_types,
+            possible_options
+          FROM ask_questions
+          WHERE uuid = UNHEX(REPLACE(?, '-', ''))
+        |sql}
+        |> Caqti_type.string ->! Model.QuestionRow.t
       ;;
 
       let find connection id =
@@ -123,33 +122,33 @@ module MariaDB () = struct
       ;;
 
       let insert_question_request =
-        Caqti_request.exec
-          Model.QuestionRow.t
-          {sql|
-            INSERT INTO ask_questions (
-              uuid,
-              label,
-              help_text,
-              text,
-              default_value,
-              validation_regex,
-              question_type,
-              max_file_size_mb,
-              mime_types,
-              possible_options
-            ) VALUES (
-              UNHEX(REPLACE(?, '-', '')),
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?
-            );
-          |sql}
+        let open Caqti_request.Infix in
+        {sql|
+          INSERT INTO ask_questions (
+            uuid,
+            label,
+            help_text,
+            text,
+            default_value,
+            validation_regex,
+            question_type,
+            max_file_size_mb,
+            mime_types,
+            possible_options
+          ) VALUES (
+            UNHEX(REPLACE(?, '-', '')),
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?
+          )
+        |sql}
+        |> Model.QuestionRow.t ->. Caqti_type.unit
       ;;
 
       let insert connection question =
@@ -159,7 +158,8 @@ module MariaDB () = struct
       ;;
 
       let clean_request =
-        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE ask_questions;"
+        let open Caqti_request.Infix in
+        Caqti_type.(unit ->. unit) "TRUNCATE TABLE ask_questions"
       ;;
 
       let clean connection =
@@ -170,23 +170,22 @@ module MariaDB () = struct
 
     module AnswerRow = struct
       let find_request =
-        Caqti_request.find
-          Caqti_type.string
-          Model.AnswerRow.t
-          {sql|
-            SELECT
-              LOWER(CONCAT(
-                SUBSTR(HEX(uuid), 1, 8), '-',
-                SUBSTR(HEX(uuid), 9, 4), '-',
-                SUBSTR(HEX(uuid), 13, 4), '-',
-                SUBSTR(HEX(uuid), 17, 4), '-',
-                SUBSTR(HEX(uuid), 21)
-              )),
-              text,
-              storage_handle
-            FROM ask_answers
-            WHERE uuid = UNHEX(REPLACE(?, '-', ''))
-          |sql}
+        let open Caqti_request.Infix in
+        {sql|
+          SELECT
+            LOWER(CONCAT(
+              SUBSTR(HEX(uuid), 1, 8), '-',
+              SUBSTR(HEX(uuid), 9, 4), '-',
+              SUBSTR(HEX(uuid), 13, 4), '-',
+              SUBSTR(HEX(uuid), 17, 4), '-',
+              SUBSTR(HEX(uuid), 21)
+            )),
+            text,
+            storage_handle
+          FROM ask_answers
+          WHERE uuid = UNHEX(REPLACE(?, '-', ''))
+        |sql}
+        |> Caqti_type.string ->! Model.AnswerRow.t
       ;;
 
       let find connection id =
@@ -207,9 +206,8 @@ module MariaDB () = struct
       ;;
 
       let insert_request =
-        Caqti_request.exec
-          insert_type
-          {sql|
+        let open Caqti_request.Infix in
+        {sql|
           INSERT INTO ask_answers (
             uuid,
             ask_questionnaire,
@@ -227,8 +225,9 @@ module MariaDB () = struct
                 (SELECT id FROM ask_questions WHERE ask_questions.uuid = UNHEX(REPLACE(?, '-', '')))),
             ?,
             UNHEX(REPLACE(?, '-', ''))
-          );
+          )
         |sql}
+        |> insert_type ->. Caqti_type.unit
       ;;
 
       let insert connection answer =
@@ -237,17 +236,16 @@ module MariaDB () = struct
       ;;
 
       let update_request =
-        Caqti_request.exec
-          (let open Caqti_type in
-          tup3 (option string) (option string) string)
-          {sql|
+        let open Caqti_request.Infix in
+        {sql|
           UPDATE ask_answers
           SET
             text = ?,
             storage_handle = UNHEX(REPLACE(?, '-', ''))
           WHERE
-          ask_answers.uuid = UNHEX(REPLACE(?, '-', ''));
+            ask_answers.uuid = UNHEX(REPLACE(?, '-', ''))
         |sql}
+        |> Caqti_type.(tup3 (option string) (option string) string ->. unit)
       ;;
 
       let update connection answer =
@@ -256,12 +254,12 @@ module MariaDB () = struct
       ;;
 
       let delete_request =
-        Caqti_request.exec
-          Caqti_type.string
-          {sql|
+        let open Caqti_request.Infix in
+        {sql|
           DELETE FROM ask_answers WHERE
-          ask_answers.uuid = UNHEX(REPLACE(?, '-', ''));
+          ask_answers.uuid = UNHEX(REPLACE(?, '-', ''))
         |sql}
+        |> Caqti_type.(string ->. unit)
       ;;
 
       let delete connection answer =
@@ -287,7 +285,10 @@ module MariaDB () = struct
           DbUtils.is_unique connection table_name ~sql_filter ~values ?uuid ())
       ;;
 
-      let clean_request = Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE ask_answers;"
+      let clean_request =
+        let open Caqti_request.Infix in
+        Caqti_type.(unit ->. unit) "TRUNCATE TABLE ask_answers"
+      ;;
 
       let clean connection =
         let module Connection = (val connection : Caqti_lwt.CONNECTION) in
@@ -297,31 +298,30 @@ module MariaDB () = struct
 
     module QuestionnaireRow = struct
       let find_request =
-        Caqti_request.find
-          Caqti_type.string
-          Model.QuestionnaireRow.t
-          {sql|
-            SELECT
-              LOWER(CONCAT(
-                SUBSTR(HEX(ask_questionnaires.uuid), 1, 8), '-',
-                SUBSTR(HEX(ask_questionnaires.uuid), 9, 4), '-',
-                SUBSTR(HEX(ask_questionnaires.uuid), 13, 4), '-',
-                SUBSTR(HEX(ask_questionnaires.uuid), 17, 4), '-',
-                SUBSTR(HEX(ask_questionnaires.uuid), 21)
-              )),
-              LOWER(CONCAT(
-                SUBSTR(HEX(ask_templates.uuid), 1, 8), '-',
-                SUBSTR(HEX(ask_templates.uuid), 9, 4), '-',
-                SUBSTR(HEX(ask_templates.uuid), 13, 4), '-',
-                SUBSTR(HEX(ask_templates.uuid), 17, 4), '-',
-                SUBSTR(HEX(ask_templates.uuid), 21)
-              )),
-              ask_templates.label,
-              ask_templates.description
-            FROM ask_questionnaires
-              LEFT JOIN ask_templates ON ask_questionnaires.ask_template = ask_templates.id
-            WHERE ask_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
-          |sql}
+        let open Caqti_request.Infix in
+        {sql|
+          SELECT
+            LOWER(CONCAT(
+              SUBSTR(HEX(ask_questionnaires.uuid), 1, 8), '-',
+              SUBSTR(HEX(ask_questionnaires.uuid), 9, 4), '-',
+              SUBSTR(HEX(ask_questionnaires.uuid), 13, 4), '-',
+              SUBSTR(HEX(ask_questionnaires.uuid), 17, 4), '-',
+              SUBSTR(HEX(ask_questionnaires.uuid), 21)
+            )),
+            LOWER(CONCAT(
+              SUBSTR(HEX(ask_templates.uuid), 1, 8), '-',
+              SUBSTR(HEX(ask_templates.uuid), 9, 4), '-',
+              SUBSTR(HEX(ask_templates.uuid), 13, 4), '-',
+              SUBSTR(HEX(ask_templates.uuid), 17, 4), '-',
+              SUBSTR(HEX(ask_templates.uuid), 21)
+            )),
+            ask_templates.label,
+            ask_templates.description
+          FROM ask_questionnaires
+            LEFT JOIN ask_templates ON ask_questionnaires.ask_template = ask_templates.id
+          WHERE ask_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
+        |sql}
+        |> Caqti_type.string ->! Model.QuestionnaireRow.t
       ;;
 
       let find connection id =
@@ -335,10 +335,8 @@ module MariaDB () = struct
       ;;
 
       let find_questions_request =
-        Caqti_request.collect
-          Caqti_type.string
-          Model.QuestionAnswerRow.t
-          {sql|
+        let open Caqti_request.Infix in
+        {sql|
           SELECT
             LOWER(CONCAT(
               SUBSTR(HEX(ask_questions.uuid), 1, 8), '-',
@@ -386,6 +384,7 @@ module MariaDB () = struct
             AND ask_questions.uuid IS NOT NULL
             ORDER BY ask_template_question_mappings.question_order ASC
         |sql}
+        |> Caqti_type.string ->* Model.QuestionAnswerRow.t
       ;;
 
       let find_questions connection id =
@@ -395,11 +394,8 @@ module MariaDB () = struct
       ;;
 
       let find_answer_request =
-        Caqti_request.find_opt
-          (let open Caqti_type in
-          tup2 string string)
-          Model.AnswerRow.t
-          {sql|
+        let open Caqti_request.Infix in
+        {sql|
           SELECT
             LOWER(CONCAT(
               SUBSTR(HEX(ask_answers.uuid), 1, 8), '-',
@@ -429,6 +425,7 @@ module MariaDB () = struct
           ask_questionnaires.uuid = UNHEX(REPLACE(?, '-', ''))
             AND ask_questions.uuid = UNHEX(REPLACE(?, '-', ''))
         |sql}
+        |> Caqti_type.(tup2 string string) ->? Model.AnswerRow.t
       ;;
 
       let find_answer connection ids =
@@ -437,18 +434,17 @@ module MariaDB () = struct
       ;;
 
       let insert_request =
-        Caqti_request.exec
-          (let open Caqti_type in
-          tup2 string string)
-          {sql|
-            INSERT INTO ask_questionnaires (
-              uuid,
-              ask_template
-            ) VALUES (
-              UNHEX(REPLACE(?, '-', '')),
-              (SELECT id FROM ask_templates WHERE ask_templates.uuid = UNHEX(REPLACE(?, '-', '')))
-            );
-          |sql}
+        let open Caqti_request.Infix in
+        {sql|
+          INSERT INTO ask_questionnaires (
+            uuid,
+            ask_template
+          ) VALUES (
+            UNHEX(REPLACE(?, '-', '')),
+            (SELECT id FROM ask_templates WHERE ask_templates.uuid = UNHEX(REPLACE(?, '-', '')))
+          )
+        |sql}
+        |> Caqti_type.(tup2 string string ->. unit)
       ;;
 
       let insert connection questionnaire =
@@ -457,7 +453,8 @@ module MariaDB () = struct
       ;;
 
       let clean_request =
-        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE ask_questionnaires;"
+        let open Caqti_request.Infix in
+        Caqti_type.(unit ->. unit) "TRUNCATE TABLE ask_questionnaires"
       ;;
 
       let clean connection =
@@ -468,20 +465,19 @@ module MariaDB () = struct
 
     module TemplateRow = struct
       let insert_request =
-        Caqti_request.exec
-          (let open Caqti_type in
-          tup3 string string (option string))
-          {sql|
-            INSERT INTO ask_templates (
-              uuid,
-              label,
-              description
-            ) VALUES (
-              UNHEX(REPLACE(?, '-', '')),
-              ?,
-              ?
-            );
-          |sql}
+        let open Caqti_request.Infix in
+        {sql|
+          INSERT INTO ask_templates (
+            uuid,
+            label,
+            description
+          ) VALUES (
+            UNHEX(REPLACE(?, '-', '')),
+            ?,
+            ?
+          )
+        |sql}
+        |> Caqti_type.(tup3 string string (option string) ->. unit)
       ;;
 
       let insert connection template =
@@ -490,7 +486,8 @@ module MariaDB () = struct
       ;;
 
       let clean_request =
-        Caqti_request.exec Caqti_type.unit "TRUNCATE TABLE ask_templates;"
+        let open Caqti_request.Infix in
+        Caqti_type.(unit ->. unit) "TRUNCATE TABLE ask_templates"
       ;;
 
       let clean connection =
@@ -501,24 +498,23 @@ module MariaDB () = struct
 
     module Mapping = struct
       let insert_request =
-        Caqti_request.exec
-          (let open Caqti_type in
-          tup2 string (tup2 string (tup2 string (tup2 int bool))))
-          {sql|
-            INSERT INTO ask_template_question_mappings (
-              uuid,
-              ask_template,
-              ask_question,
-              question_order,
-              required
-            ) VALUES (
-              UNHEX(REPLACE(?, '-', '')),
-              (SELECT id FROM ask_templates WHERE ask_templates.uuid = UNHEX(REPLACE(?, '-', ''))),
-              (SELECT id FROM ask_questions WHERE ask_questions.uuid = UNHEX(REPLACE(?, '-', ''))),
-              ?,
-              ?
-            );
-          |sql}
+        let open Caqti_request.Infix in
+        {sql|
+          INSERT INTO ask_template_question_mappings (
+            uuid,
+            ask_template,
+            ask_question,
+            question_order,
+            required
+          ) VALUES (
+            UNHEX(REPLACE(?, '-', '')),
+            (SELECT id FROM ask_templates WHERE ask_templates.uuid = UNHEX(REPLACE(?, '-', ''))),
+            (SELECT id FROM ask_questions WHERE ask_questions.uuid = UNHEX(REPLACE(?, '-', ''))),
+            ?,
+            ?
+          )
+        |sql}
+        |> Caqti_type.(tup2 string (tup2 string (tup2 string (tup2 int bool))) ->. unit)
       ;;
 
       let insert connection mapping =
@@ -527,9 +523,8 @@ module MariaDB () = struct
       ;;
 
       let clean_request =
-        Caqti_request.exec
-          Caqti_type.unit
-          "TRUNCATE TABLE ask_template_question_mappings;"
+        let open Caqti_request.Infix in
+        Caqti_type.(unit ->. unit) "TRUNCATE TABLE ask_template_question_mappings"
       ;;
 
       let clean connection =
@@ -539,6 +534,7 @@ module MariaDB () = struct
     end
 
     let clean ?ctx:_ () =
+      let open Lwt.Syntax in
       DbUtils.with_disabled_fk_check (fun connection ->
         let* () = QuestionRow.clean connection in
         let* () = TemplateRow.clean connection in

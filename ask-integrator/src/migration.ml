@@ -11,7 +11,7 @@ module MariaDB = struct
           `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (`id`),
           UNIQUE KEY `unique_uuid` (`uuid`)
-          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
           |sql}
   ;;
 
@@ -32,7 +32,7 @@ module MariaDB = struct
           FOREIGN KEY (`ask_integration_service_mapping`)
           REFERENCES `ask_integration_service_mappings` (`id`)
           ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       |sql}
   ;;
 
