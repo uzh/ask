@@ -87,12 +87,12 @@ module MariaDb = struct
       let fragment =
         if with_id
         then
-          Caml.Format.asprintf
+          Format.asprintf
             {sql| AND %s.uuid != UNHEX(REPLACE(?, '-', '')) LIMIT 1) |sql}
             table_name
         else ""
       in
-      Caml.Format.asprintf
+      Format.asprintf
         {sql| SELECT NOT EXISTS (SELECT 1 FROM %s %s WHERE %s %s )|sql}
         table_name
         sql_joins

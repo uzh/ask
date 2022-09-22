@@ -420,7 +420,7 @@ module QuestionAnswerRow = struct
         , None )
     | { question_type = type_; question_uuid = id; _ } ->
       let msg =
-        Caml.Format.asprintf
+        Format.asprintf
           "Invalid question type encountered %s for question with id %s"
           type_
           id
@@ -573,8 +573,7 @@ module AnswerRow = struct
 
   let asset_exn answer =
     match answer |> asset with
-    | None ->
-      failwith (Caml.Format.asprintf "Asset with id %s has no asset" (uuid answer))
+    | None -> failwith (Format.asprintf "Asset with id %s has no asset" (uuid answer))
     | Some answer -> answer
   ;;
 

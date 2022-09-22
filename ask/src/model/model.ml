@@ -134,7 +134,7 @@ module Question = struct
     | Year (a, b, c, d, _) -> Year (a, b, c, d, false)
   ;;
 
-  let validation_error uuid message = Error (Caml.Format.asprintf "%s,%s" uuid message)
+  let validation_error uuid message = Error (Format.asprintf "%s,%s" uuid message)
 
   let[@warning "-4"] validate question answer_input =
     match question, answer_input with
@@ -189,7 +189,7 @@ module Question = struct
        | false, true ->
          validation_error
            (uuid question)
-           (Caml.Format.asprintf "Asset file size too big (max. %d)" max_file_sizeMb)
+           (Format.asprintf "Asset file size too big (max. %d)" max_file_sizeMb)
        | _, false -> validation_error (uuid question) "Invalid value provided")
     | question, _ -> validation_error (uuid question) "Invalid value provided"
   ;;

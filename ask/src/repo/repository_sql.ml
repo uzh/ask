@@ -27,7 +27,7 @@ module MariaDB () = struct
 
     let is_unique_request table_name sql_filter request_types sql_joins =
       let open Caqti_request.Infix in
-      Caml.Format.asprintf
+      Format.asprintf
         {sql|
           SELECT NOT EXISTS (
             SELECT 1
@@ -44,7 +44,7 @@ module MariaDB () = struct
 
     let is_unique_with_uuid_request table_name sql_filter request_types sql_joins =
       let open Caqti_request.Infix in
-      Caml.Format.asprintf
+      Format.asprintf
         {sql|
           SELECT NOT EXISTS (
             SELECT 1
