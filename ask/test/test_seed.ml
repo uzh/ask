@@ -1,10 +1,9 @@
-open Lwt.Syntax
-
 module Make (AskService : Ask.Sig) = struct
   module AttributeTest = struct
     module Model = Ask.Model
 
     let questionnaire ~label =
+      let open Lwt.Syntax in
       let open AskService.Questionnaire in
       let* template_id = create_template ~label () in
       let* questionnaire_id =
@@ -13,10 +12,11 @@ module Make (AskService : Ask.Sig) = struct
           ~questionnaire_id:(Uuidm.v `V4 |> Uuidm.to_string)
       in
       find questionnaire_id
-      |> Lwt.map (Option.to_result ~none:"Seed failed, can not create questionnaire")
+      |> Lwt.map (CCOption.to_result "Seed failed, can not create questionnaire")
     ;;
 
     let empty_questionnaire_with_three_questions ~label =
+      let open Lwt.Syntax in
       let open AskService.Questionnaire in
       let* template_id = create_template ~label () in
       let question1 =
@@ -57,13 +57,14 @@ module Make (AskService : Ask.Sig) = struct
       in
       let* questionnaire =
         find questionnaire_id
-        |> Lwt.map (Option.to_result ~none:"Seed failed, can not create questionnaire")
+        |> Lwt.map (CCOption.to_result "Seed failed, can not create questionnaire")
         |> Lwt.map CCResult.get_or_failwith
       in
       Lwt.return (questionnaire, question1, question2, question3)
     ;;
 
     let questionnaire_with_three_answered_questions ~label =
+      let open Lwt.Syntax in
       let open AskService.Questionnaire in
       let* questionnaire, question1, question2, question3 =
         empty_questionnaire_with_three_questions ~label
@@ -81,7 +82,7 @@ module Make (AskService : Ask.Sig) = struct
       let questionnaire_id = Model.Questionnaire.uuid questionnaire in
       let* questionnaire =
         find questionnaire_id
-        |> Lwt.map (Option.to_result ~none:"No questionnaire found")
+        |> Lwt.map (CCOption.to_result "No questionnaire found")
         |> Lwt.map CCResult.get_or_failwith
       in
       Lwt.return (Ok (questionnaire, question1, question2, question3))

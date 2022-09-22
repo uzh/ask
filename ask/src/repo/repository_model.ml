@@ -81,13 +81,13 @@ module QuestionRow = struct
             ) ) )
     in
     let decode
-        ( id
-        , ( label
-          , ( help_text
-            , ( text
-              , ( default_value
-                , ( validation_regex
-                  , (question_type, (max_file_size, (mime_types, options))) ) ) ) ) ) )
+      ( id
+      , ( label
+        , ( help_text
+          , ( text
+            , ( default_value
+              , (validation_regex, (question_type, (max_file_size, (mime_types, options))))
+              ) ) ) ) )
       =
       Ok
         { id
@@ -453,23 +453,23 @@ module QuestionAnswerRow = struct
                             ) ) ) ) ) ) ) ) ) ) )
     in
     let decode
-        ( question_uuid
-        , ( question_label
-          , ( question_help_text
-            , ( question_text
-              , ( question_required
-                , ( question_default_value
-                  , ( question_validation_regex
-                    , ( question_type
-                      , ( question_max_file_size
-                        , ( question_mime_types
-                          , ( question_options
-                            , ( answer_uuid
-                              , ( answer_text
-                                , ( answer_asset_uuid
-                                  , ( answer_asset_filename
-                                    , (answer_asset_size, answer_asset_mime) ) ) ) ) ) )
-                        ) ) ) ) ) ) ) ) )
+      ( question_uuid
+      , ( question_label
+        , ( question_help_text
+          , ( question_text
+            , ( question_required
+              , ( question_default_value
+                , ( question_validation_regex
+                  , ( question_type
+                    , ( question_max_file_size
+                      , ( question_mime_types
+                        , ( question_options
+                          , ( answer_uuid
+                            , ( answer_text
+                              , ( answer_asset_uuid
+                                , ( answer_asset_filename
+                                  , (answer_asset_size, answer_asset_mime) ) ) ) ) ) ) )
+                    ) ) ) ) ) ) ) )
       =
       Ok
         { question_uuid
@@ -546,7 +546,7 @@ module QuestionnaireRow = struct
       ~uuid:row.uuid
       ~template_uuid:row.template_uuid
       ~label:row.template_label
-      ~description:(row.template_description |> Option.value ~default:"")
+      ~description:(row.template_description |> CCOption.value ~default:"")
       ~questions
       ()
   ;;

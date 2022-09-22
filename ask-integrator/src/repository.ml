@@ -109,7 +109,7 @@ module MariaDb = struct
     ;;
 
     let is_unique connection table_name ~sql_filter ~values ?sql_joins ?id () =
-      let sql_joins = sql_joins |> Option.value ~default:"" in
+      let sql_joins = sql_joins |> CCOption.value ~default:"" in
       let module Connection = (val connection : Caqti_lwt.CONNECTION) in
       match id with
       | None ->
@@ -421,7 +421,7 @@ module MariaDb = struct
   ;;
 
   let[@warning "-40"] update model ?member_label ?questionnaires () =
-    if Option.is_none member_label && Option.is_none questionnaires
+    if CCOption.is_none member_label && CCOption.is_none questionnaires
     then
       Lwt.return
         (Error "Nothing to update! Please provide at least a label or questionnaires.")

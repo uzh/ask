@@ -1,5 +1,3 @@
-open Lwt.Syntax
-
 let name = "ask_integrator"
 let log_src = Logs.Src.create name
 
@@ -60,6 +58,7 @@ module Make (Repo : Repository.Sig) (AskService : Ask.Sig) = struct
     }
 
   let create ~member_id ~member_label ~questionnaires =
+    let open Lwt.Syntax in
     let handler =
       Model.Handler.create ~member_id ~label:member_label ~questionnaires ()
     in
@@ -83,12 +82,13 @@ module Make (Repo : Repository.Sig) (AskService : Ask.Sig) = struct
   ;;
 
   let find ~member_id ?label () =
-    let member_label = label |> Option.value ~default:"" in
+    let member_label = label |> CCOption.value ~default:"" in
     Repo.find_by_member ~member_id ~member_label
   ;;
 
   let find_questionnaire_with_label ~member_id ?member_label ~questionnaire_label () =
-    let member_label = member_label |> Option.value ~default:"" in
+    let open Lwt.Syntax in
+    let member_label = member_label |> CCOption.value ~default:"" in
     let* handler = Repo.find_by_member ~member_id ~member_label in
     match handler with
     | None -> Lwt.return_none

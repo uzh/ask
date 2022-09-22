@@ -71,7 +71,7 @@ module Question : sig
   val is_required : t -> bool
   val set_optional : t -> t
   val is_valid : t -> AnswerInput.t -> bool
-  val validate : t -> AnswerInput.t option -> (unit, string) Result.t
+  val validate : t -> AnswerInput.t option -> (unit, string) CCResult.t
 end
 
 module QuestionAnswer : sig
@@ -127,5 +127,5 @@ module Questionnaire : sig
     -> (Question.t * 'a) list
 
   val set_all_questions_to_optional : t -> t
-  val answer : t -> QuestionAnswer.t list -> (Event.t list, string list) Result.t
+  val answer : t -> QuestionAnswer.t list -> (Event.t list, string list) CCResult.t
 end

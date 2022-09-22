@@ -1,4 +1,3 @@
-open Lwt.Syntax
 module Database = Sihl.Database
 module RepoSql = Repository_sql
 module RepoModel = Repository_model
@@ -107,6 +106,7 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
 
   module Questionnaire = struct
     let find id =
+      let open Lwt.Syntax in
       Database.query (fun connection ->
         let* questionnaire = Sql.QuestionnaireRow.find connection id in
         let* question_rows = Sql.QuestionnaireRow.find_questions connection id in
@@ -145,16 +145,16 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
     ;;
 
     let update_answer ~questionnaire_id ~question_id ?text ?asset_id () =
+      let open Lwt.Syntax in
       Database.query (fun connection ->
         let* answer =
           find_answer ~questionnaire_id ~question_id
           |> Lwt.map
-               (Option.to_result
-                  ~none:
-                    (Caml.Format.asprintf
-                       "Answer with questionnaire_id %s and question_id %s"
-                       questionnaire_id
-                       question_id))
+               (CCOption.to_result
+                  (Format.asprintf
+                     "Answer with questionnaire_id %s and question_id %s"
+                     questionnaire_id
+                     question_id))
           |> Lwt.map CCResult.get_or_failwith
         in
         let answer_id = RepoModel.AnswerRow.uuid answer in
@@ -170,16 +170,16 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
     ;;
 
     let delete_answer ~questionnaire_id ~question_id =
+      let open Lwt.Syntax in
       Database.query (fun connection ->
         let* answer =
           find_answer ~questionnaire_id ~question_id
           |> Lwt.map
-               (Option.to_result
-                  ~none:
-                    (Caml.Format.asprintf
-                       "Answer with questionnaire_id %s and question_id %s"
-                       questionnaire_id
-                       question_id))
+               (CCOption.to_result
+                  (Format.asprintf
+                     "Answer with questionnaire_id %s and question_id %s"
+                     questionnaire_id
+                     question_id))
           |> Lwt.map CCResult.get_or_failwith
         in
         let answer_id = RepoModel.AnswerRow.uuid answer in
@@ -187,6 +187,7 @@ module MariaDB (MigrationService : Sihl.Contract.Migration.Sig) : Sig = struct
     ;;
 
     let find_asset_id ~questionnaire_id ~question_id =
+      let open Lwt.Syntax in
       let* answer = find_answer ~questionnaire_id ~question_id in
       let asset_id = CCOption.bind answer RepoModel.AnswerRow.asset in
       Lwt.return asset_id

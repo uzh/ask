@@ -23,7 +23,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
     in
     let* questionnaire =
       Questionnaire.find questionnaire_id
-      |> Lwt.map (Option.to_result ~none:"No questionnaire found")
+      |> Lwt.map (CCOption.to_result "No questionnaire found")
       |> Lwt.map CCResult.get_or_failwith
     in
     let actual_label = Model.Questionnaire.label questionnaire in
@@ -56,7 +56,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
     in
     let* questionnaire =
       Questionnaire.find (Model.Questionnaire.uuid questionnaire)
-      |> Lwt.map (Option.to_result ~none:"No questionnaire found")
+      |> Lwt.map (CCOption.to_result "No questionnaire found")
       |> Lwt.map CCResult.get_or_failwith
     in
     let expected =
@@ -126,7 +126,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
     let* () = Questionnaire.answer questionnaire answered_questions in
     let* questionnaire =
       Questionnaire.find (Model.Questionnaire.uuid questionnaire)
-      |> Lwt.map (Option.to_result ~none:"No questionnaire found")
+      |> Lwt.map (CCOption.to_result "No questionnaire found")
       |> Lwt.map CCResult.get_or_failwith
     in
     let[@warning "-4"] file_id, filename, filesize, mime =
@@ -174,7 +174,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
     let* () = Questionnaire.answer questionnaire answered_questions in
     let* questionnaire =
       Questionnaire.find (Model.Questionnaire.uuid questionnaire)
-      |> Lwt.map (Option.to_result ~none:"No questionnaire found")
+      |> Lwt.map (CCOption.to_result "No questionnaire found")
       |> Lwt.map CCResult.get_or_failwith
     in
     let[@warning "-4"] actual_answer1, actual_answer2 =
@@ -213,7 +213,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
     let* () = Questionnaire.answer questionnaire answered_questions in
     let* questionnaire =
       Questionnaire.find (Model.Questionnaire.uuid questionnaire)
-      |> Lwt.map (Option.to_result ~none:"No questionnaire found")
+      |> Lwt.map (CCOption.to_result "No questionnaire found")
       |> Lwt.map CCResult.get_or_failwith
     in
     let[@warning "-4"] file_id, filename, filesize, mime =
@@ -258,7 +258,7 @@ module Make (AskService : Ask.Sig) (StorageService : Sihl.Contract.Storage.Sig) 
     let question_id = Model.Question.uuid question3 in
     let* questionnaire_id =
       Questionnaire.find (Model.Questionnaire.uuid questionnaire)
-      |> Lwt.map (Option.to_result ~none:"No questionnaire found")
+      |> Lwt.map (CCOption.to_result "No questionnaire found")
       |> Lwt.map CCResult.get_or_failwith
       |> Lwt.map Model.Questionnaire.uuid
     in

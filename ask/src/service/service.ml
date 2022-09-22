@@ -1,5 +1,3 @@
-open Lwt.Syntax
-
 let name = "ask"
 let log_src = Logs.Src.create name
 
@@ -87,6 +85,7 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
     exception Exception of string
 
     let handle_event event =
+      let open Lwt.Syntax in
       match event with
       | Model.Event.TextAnswerCreated (questionnaire_id, question_id, text) ->
         Repo.Questionnaire.create_text_answer
@@ -113,12 +112,11 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
         let* asset_id =
           Repo.Questionnaire.find_asset_id ~questionnaire_id ~question_id
           |> Lwt.map
-               (Option.to_result
-                  ~none:
-                    (Caml.Format.asprintf
-                       "Asset id not found for questionnaire_id %s and question_id %s"
-                       questionnaire_id
-                       question_id))
+               (CCOption.to_result
+                  (Format.asprintf
+                     "Asset id not found for questionnaire_id %s and question_id %s"
+                     questionnaire_id
+                     question_id))
           |> Lwt.map CCResult.get_or_failwith
         in
         let* file = Storage.find asset_id in
@@ -135,12 +133,11 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
         let* asset_id =
           Repo.Questionnaire.find_asset_id ~questionnaire_id ~question_id
           |> Lwt.map
-               (Option.to_result
-                  ~none:
-                    (Caml.Format.asprintf
-                       "Asset id not found for questionnaire_id %s and question_id %s"
-                       questionnaire_id
-                       question_id))
+               (CCOption.to_result
+                  (Format.asprintf
+                     "Asset id not found for questionnaire_id %s and question_id %s"
+                     questionnaire_id
+                     question_id))
           |> Lwt.map CCResult.get_or_failwith
         in
         let* _ = Storage.delete asset_id in
@@ -148,6 +145,7 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
     ;;
 
     let instantiate_questionnaire ~template_id ~questionnaire_id =
+      let open Lwt.Syntax in
       let* () = Repo.Questionnaire.create ~template_id ~questionnaire_id in
       Lwt.return questionnaire_id
     ;;
@@ -155,19 +153,21 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
     let find id = Repo.Questionnaire.find id
 
     let create_template ?id ~label ?description () =
+      let open Lwt.Syntax in
       let id = id |> CCOption.value ~default:(Uuidm.v `V4 |> Uuidm.to_string) in
       let* () = Repo.Questionnaire.create_template ~id ~label ~description in
       Lwt.return id
     ;;
 
     let answer questionnaire answers =
+      let open Lwt.Syntax in
       let events = Model.Questionnaire.answer questionnaire answers in
       match events with
       | Error errors ->
         Exception
           (errors
           |> CCList.head_opt
-          |> Option.value ~default:"Could not answer questionnaire")
+          |> CCOption.value ~default:"Could not answer questionnaire")
         |> raise
       | Ok events ->
         let rec handle_events events =
@@ -181,6 +181,7 @@ module Make (Repo : Repository.Sig) (Storage : Sihl.Contract.Storage.Sig) = stru
     ;;
 
     let add_question ~template_id ~order question =
+      let open Lwt.Syntax in
       let question_id = Model.Question.uuid question in
       let mapping_id = Uuidm.v `V4 |> Uuidm.to_string in
       Sihl.Database.transaction (fun connection ->

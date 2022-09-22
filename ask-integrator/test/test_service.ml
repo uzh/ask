@@ -27,7 +27,7 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
     let template_label = "test-template" in
     let* questionnaire, _, _, _ =
       Seed.QuestTest.questionnaire_with_three_answered_questions ~label:template_label
-      |> Lwt.map Result.get_ok
+      |> Lwt.map CCResult.get_or_failwith
     in
     let member_id = create_uuid () in
     let member_label = "user" in
@@ -37,7 +37,7 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
         ~member_id
         ~member_label
         ~questionnaires:[ questionnaire_label, questionnaire ]
-      |> Lwt.map Result.get_ok
+      |> Lwt.map CCResult.get_or_failwith
     in
     Alcotest.(
       check
@@ -54,7 +54,7 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
     let template_label = "test-template" in
     let* questionnaire, _, _, _ =
       Seed.QuestTest.questionnaire_with_three_answered_questions ~label:template_label
-      |> Lwt.map Result.get_ok
+      |> Lwt.map CCResult.get_or_failwith
     in
     let member_id = create_uuid () in
     let member_label = "user" in
@@ -64,10 +64,11 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
         ~member_id
         ~member_label
         ~questionnaires:[ questionnaire_label, questionnaire ]
-      |> Lwt.map Result.get_ok
+      |> Lwt.map CCResult.get_or_failwith
     in
     let* handler =
-      TestService.find ~member_id ~label:member_label () |> Lwt.map Option.get
+      TestService.find ~member_id ~label:member_label ()
+      |> Lwt.map (CCOption.get_exn_or "Couldn't find member!")
     in
     Alcotest.(check testable_handler "found handler" expected_handler handler);
     Lwt.return_unit
@@ -79,7 +80,7 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
     let template_label = "test-template" in
     let* expected_questionnaire, _, _, _ =
       Seed.QuestTest.questionnaire_with_three_answered_questions ~label:template_label
-      |> Lwt.map Result.get_ok
+      |> Lwt.map CCResult.get_or_failwith
     in
     let member_id = create_uuid () in
     let member_label = "user" in
@@ -96,7 +97,7 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
         ~member_label
         ~questionnaire_label
         ()
-      |> Lwt.map Option.get
+      |> Lwt.map (CCOption.get_exn_or "Couldn't find questionnaire with label!")
     in
     Alcotest.(
       check
@@ -113,7 +114,7 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
     let template_label = "test-template" in
     let* questionnaire, _, _, _ =
       Seed.QuestTest.questionnaire_with_three_answered_questions ~label:template_label
-      |> Lwt.map Result.get_ok
+      |> Lwt.map CCResult.get_or_failwith
     in
     let member_id = create_uuid () in
     let member_label = "user" in
@@ -124,7 +125,7 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
         ~member_id
         ~member_label
         ~questionnaires:[ questionnaire_label, questionnaire ]
-      |> Lwt.map Result.get_ok
+      |> Lwt.map CCResult.get_or_failwith
     in
     let* res =
       TestService.update
@@ -132,11 +133,12 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
         ~member_label
         ~questionnaires:[ expected_questionnaire_label, questionnaire ]
         ()
-      |> Lwt.map Result.get_ok
+      |> Lwt.map CCResult.get_or_failwith
     in
     Alcotest.(check string "test successful" "Ask integrator handler updated" res);
     let* handler =
-      TestService.find ~member_id ~label:member_label () |> Lwt.map Option.get
+      TestService.find ~member_id ~label:member_label ()
+      |> Lwt.map (CCOption.get_exn_or "Couldn't find member!")
     in
     let new_label, _ = List.hd (Model.Handler.questionnaires handler) in
     Alcotest.(check string "found handler" expected_questionnaire_label new_label);
@@ -149,7 +151,7 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
     let template_label = "test-template" in
     let* questionnaire, _, _, _ =
       Seed.QuestTest.questionnaire_with_three_answered_questions ~label:template_label
-      |> Lwt.map Result.get_ok
+      |> Lwt.map CCResult.get_or_failwith
     in
     let member_id = create_uuid () in
     let member_label = "user" in
@@ -159,7 +161,7 @@ module Make (TestService : Integrator.Sig) (AskService : Ask.Sig) = struct
         ~member_id
         ~member_label
         ~questionnaires:[ questionnaire_label, questionnaire ]
-      |> Lwt.map Result.get_ok
+      |> Lwt.map CCResult.get_or_failwith
     in
     let* model = TestService.find ~member_id ~label:member_label () in
     Alcotest.(check (option testable_handler) "is created" (Some handler) model);

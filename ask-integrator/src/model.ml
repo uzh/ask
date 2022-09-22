@@ -45,10 +45,10 @@ module QuestionnaireMappingRow = struct
 
   let create ~service_mapper ?label ~questionnaire ?created_at ?updated_at () =
     { service_mapper
-    ; label = label |> Option.value ~default:""
+    ; label = label |> CCOption.value ~default:""
     ; questionnaire
-    ; created_at = created_at |> Option.value ~default:(Ptime_clock.now ())
-    ; updated_at = updated_at |> Option.value ~default:(Ptime_clock.now ())
+    ; created_at = created_at |> CCOption.value ~default:(Ptime_clock.now ())
+    ; updated_at = updated_at |> CCOption.value ~default:(Ptime_clock.now ())
     }
   ;;
 
@@ -123,12 +123,12 @@ module Handler = struct
     ?updated_at
     ()
     =
-    { id = id |> Option.value ~default:(Uuidm.v `V4 |> Uuidm.to_string)
+    { id = id |> CCOption.value ~default:(Uuidm.v `V4 |> Uuidm.to_string)
     ; member_id
-    ; label = label |> Option.value ~default:""
+    ; label = label |> CCOption.value ~default:""
     ; questionnaires
-    ; created_at = created_at |> Option.value ~default:(Ptime_clock.now ())
-    ; updated_at = updated_at |> Option.value ~default:(Ptime_clock.now ())
+    ; created_at = created_at |> CCOption.value ~default:(Ptime_clock.now ())
+    ; updated_at = updated_at |> CCOption.value ~default:(Ptime_clock.now ())
     }
   ;;
 
